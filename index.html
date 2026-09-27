@@ -1,1 +1,175 @@
-kys
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Gateway</title>
+  <!-- Load Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Tactile 3D Button Press Effect */
+    .btn-red-3d {
+      box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.45), 
+                  0 8px 10px -6px rgba(220, 38, 38, 0.4),
+                  inset 0 2px 4px rgba(255, 255, 255, 0.3),
+                  inset 0 -4px 6px rgba(0, 0, 0, 0.25);
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-red-3d:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 16px 30px -5px rgba(220, 38, 38, 0.6), 
+                  0 10px 12px -5px rgba(220, 38, 38, 0.45),
+                  inset 0 2px 4px rgba(255, 255, 255, 0.35),
+                  inset 0 -4px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    .btn-red-3d:active {
+      transform: translateY(2px) scale(0.97);
+      box-shadow: 0 4px 12px -2px rgba(220, 38, 38, 0.3), 
+                  inset 0 3px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Ambient pulse glow */
+    @keyframes subtlePulse {
+      0%, 100% {
+        opacity: 0.15;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.3;
+        transform: scale(1.08);
+      }
+    }
+
+    .glow-aura {
+      animation: subtlePulse 4s infinite ease-in-out;
+    }
+  </style>
+</head>
+
+<body class="bg-neutral-950 text-white min-h-screen flex items-center justify-center overflow-hidden m-0 p-4 relative">
+
+  <!-- Subtle ambient background ring behind button -->
+  <div class="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-red-600 blur-3xl pointer-events-none glow-aura"></div>
+
+  <!-- Main interactive wrapper -->
+  <main class="relative z-10 flex flex-col items-center justify-center">
+    
+    <!-- The Red Button with X -->
+    <button 
+      id="portalButton"
+      type="button"
+      aria-label="Transport to a random website"
+      class="btn-red-3d group relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-b from-red-500 via-red-600 to-red-700 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-red-400/50 cursor-pointer"
+    >
+      <!-- Crisp SVG 'X' -->
+      <svg 
+        class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-white stroke-[2.75] transition-transform duration-200 group-hover:rotate-90 group-active:scale-90 drop-shadow-sm" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+      >
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- Discreet destination preview status -->
+    <p id="statusMsg" class="mt-8 text-neutral-500 text-xs sm:text-sm font-medium tracking-wide uppercase opacity-0 transition-opacity duration-300">
+      Warping...
+    </p>
+
+  </main>
+
+  <script>
+    /**
+     * Curated catalog of fascinating web destinations spanning diverse domains:
+     * Science, Art, Space, History, Literature, Quirky Tools, Nature, Philosophy, and Tech.
+     */
+    const DESTINATIONS = [
+      // Space & Astronomy
+      "https://apod.nasa.gov/apod/astropix.html",
+      "https://eyes.nasa.gov",
+      "https://hubblesite.org",
+      "https://heavens-above.com",
+      
+      // Science & Nature
+      "https://www.ourworldindata.org",
+      "https://earth.nullschool.net",
+      "https://www.inaturalist.org",
+      "https://oceanexplorer.noaa.gov",
+      "https://www.allaboutbirds.org",
+      "https://zoom.earth",
+      
+      // Art, Culture & History
+      "https://www.metmuseum.org/art/collection",
+      "https://artsandculture.google.com",
+      "https://www.rijksmuseum.nl/en/rijksstudio",
+      "https://www.openculture.com",
+      "https://publicdomainreview.org",
+      "https://www.loc.gov",
+      
+      // Books, Literature & Ideas
+      "https://www.gutenberg.org",
+      "https://plato.stanford.edu",
+      "https://www.poetryfoundation.org",
+      "https://openlibrary.org",
+      "https://aeon.co",
+      
+      // Curiosity, Sound & Play
+      "https://radio.garden",
+      "https://quickdraw.withgoogle.com",
+      "https://neal.fun",
+      "https://pointerpointer.com",
+      "https://theuselessweb.com",
+      "https://window-swap.com",
+      "https://driveandlisten.herokuapp.com",
+      
+      // Tech, Archives & Knowledge
+      "https://archive.org",
+      "https://en.wikipedia.org/wiki/Special:Random",
+      "https://ciechanow.ski",
+      "https://wikivoyage.org/wiki/Special:Random"
+    ];
+
+    const portalButton = document.getElementById('portalButton');
+    const statusMsg = document.getElementById('statusMsg');
+
+    /**
+     * Selects a random URL from the pool and initiates the redirect.
+     */
+    function launchRandomDestination() {
+      // Pick random destination
+      const randomIndex = Math.floor(Math.random() * DESTINATIONS.length);
+      const targetUrl = DESTINATIONS[randomIndex];
+
+      // Provide visual feedback
+      statusMsg.textContent = "Redirecting...";
+      statusMsg.classList.remove('opacity-0');
+      statusMsg.classList.add('opacity-100');
+
+      // Slight brief delay to show click feedback before redirecting
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 220);
+    }
+
+    // Attach click and keyboard trigger listeners
+    portalButton.addEventListener('click', launchRandomDestination);
+  </script>
+</body>
+</html>
