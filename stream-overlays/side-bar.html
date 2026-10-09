@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stream Sidebar - 227x934</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --accent-color: #48cae4;
+      --accent-glow: rgba(72, 202, 228, 0.55);
+
+      --card-bg: rgba(12, 14, 18, 0.72);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --card-radius: 14px;
+      
+      --inner-card-bg: rgba(255, 255, 255, 0.05);
+      --inner-card-border: rgba(255, 255, 255, 0.09);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 227px;
+      height: 934px;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 10px;
+    }
+
+    .sidebar-container {
+      width: 100%;
+      height: 100%;
+      padding: 16px 12px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      transition: border-color 0.8s ease;
+    }
+
+    .widget-panel {
+      background: var(--inner-card-bg);
+      border: 1px solid var(--inner-card-border);
+      border-radius: 12px;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .panel-header {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-color);
+      text-shadow: 0 0 12px var(--accent-glow);
+      text-align: center;
+      width: 100%;
+      margin-bottom: 8px;
+      transition: color 0.8s ease, text-shadow 0.8s ease;
+    }
+
+    /* 1. Stream Uptime */
+    .uptime-panel {
+      height: 100px;
+      flex-shrink: 0;
+    }
+
+    .uptime-value {
+      font-size: 30px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      width: 100%;
+      line-height: 1;
+    }
+
+    /* 2. Minecraft Server Box */
+    .mc-panel {
+      height: 125px;
+      flex-shrink: 0;
+    }
+
+    .server-ip-box {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .server-ip {
+      font-size: 15px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 0.02em;
+      word-break: break-all;
+      text-align: center;
+    }
+
+    .server-sub {
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--accent-color);
+      text-shadow: 0 0 8px var(--accent-glow);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: center;
+      transition: color 0.8s ease, text-shadow 0.8s ease;
+    }
+
+    /* 3. Social Media Panel - Fills Available Vertical Space */
+    .socials-panel {
+      flex: 1;
+      justify-content: flex-start;
+      padding: 16px 10px;
+      min-height: 0;
+    }
+
+    .social-list {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .social-row {
+      width: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 14px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 0 14px;
+      min-height: 48px;
+    }
+
+    .social-icon-box {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .social-icon {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .social-handle {
+      font-size: 15px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+
+    /* 4. Ko-fi Donation Panel */
+    .donation-panel {
+      height: 145px;
+      flex-shrink: 0;
+      padding: 14px 12px;
+      justify-content: space-between;
+    }
+
+    .donation-desc {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.95);
+      letter-spacing: 0.01em;
+      line-height: 1.35;
+      text-align: center;
+      padding: 0 4px;
+      margin-bottom: 6px;
+    }
+
+    .donation-goal-bar {
+      position: relative;
+      width: 100%;
+      height: 34px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .donation-progress-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 7%;
+      background: var(--accent-color);
+      box-shadow: 0 0 14px var(--accent-glow);
+      border-radius: 8px;
+      transition: width 0.8s ease, background 0.8s ease, box-shadow 0.8s ease;
+      z-index: 1;
+    }
+
+    .donation-label {
+      position: relative;
+      z-index: 2;
+      font-size: 13px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 0.03em;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+      white-space: nowrap;
+    }
+
+    #hidden-album-art {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <img id="hidden-album-art" src="" alt="Cover Art" crossorigin="anonymous">
+
+  <aside class="sidebar-container">
+    <!-- 1. Stream Uptime -->
+    <div class="widget-panel uptime-panel">
+      <div class="panel-header">Stream Uptime</div>
+      <div class="uptime-value" id="uptime">00:00:00</div>
+    </div>
+
+    <!-- 2. Minecraft Server Box -->
+    <div class="widget-panel mc-panel">
+      <div class="panel-header">Minecraft Server</div>
+      <div class="server-ip-box">
+        <div class="server-ip">play.pr0jectz3ro.eu</div>
+        <div class="server-sub">Java &amp; Bedrock</div>
+      </div>
+    </div>
+
+    <!-- 3. Social Media Panel -->
+    <div class="widget-panel socials-panel">
+      <div class="panel-header">Social Media</div>
+      <div class="social-list">
+        <!-- TikTok -->
+        <div class="social-row">
+          <div class="social-icon-box">
+            <img class="social-icon" src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/tiktok/default.svg" alt="TikTok">
+          </div>
+          <span class="social-handle">der_46er</span>
+        </div>
+
+        <!-- Twitch -->
+        <div class="social-row">
+          <div class="social-icon-box">
+            <img class="social-icon" src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/twitch/default.svg" alt="Twitch">
+          </div>
+          <span class="social-handle">der_46er</span>
+        </div>
+
+        <!-- YouTube -->
+        <div class="social-row">
+          <div class="social-icon-box">
+            <img class="social-icon" src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/youtube/default.svg" alt="YouTube">
+          </div>
+          <span class="social-handle">der_46er</span>
+        </div>
+
+        <!-- Instagram -->
+        <div class="social-row">
+          <div class="social-icon-box">
+            <img class="social-icon" src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/instagram/default.svg" alt="Instagram">
+          </div>
+          <span class="social-handle">not_der46er</span>
+        </div>
+
+        <!-- Kick -->
+        <div class="social-row">
+          <div class="social-icon-box">
+            <img class="social-icon" src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/kick/light.svg" alt="Kick">
+          </div>
+          <span class="social-handle">der-46er</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Ko-fi Donation Panel -->
+    <div class="widget-panel donation-panel">
+      <div class="panel-header">Support Server</div>
+      
+      <div class="donation-desc">Help keep hardware &amp; hosting costs manageable</div>
+
+      <div class="donation-goal-bar">
+        <div class="donation-progress-fill" id="kofi-progress" style="width: 7%;"></div>
+        <span class="donation-label" id="kofi-goal-text">7% of €250 Goal</span>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    const LANYARD_PROXY = "https://lanyard.txao.eu/";
+    const KOFI_WORKER = "https://ko-fi-fetch.txao.eu";
+
+    const DEFAULT_ACCENT = "#48cae4";
+    const DEFAULT_GLOW = "rgba(72, 202, 228, 0.55)";
+
+    const hiddenAlbumArt = document.getElementById("hidden-album-art");
+    const uptimeElem = document.getElementById("uptime");
+    const kofiProgress = document.getElementById("kofi-progress");
+    const kofiGoalText = document.getElementById("kofi-goal-text");
+
+    let lastLoadedCover = "";
+    const startTime = Date.now();
+
+    // Cache the last verified valid display so {{goalInfo}} never displays
+    let lastValidGoalLabel = "7% of €250 Goal";
+    let lastValidGoalPct = 7;
+
+    /* 1. Stream Uptime */
+    function updateUptime() {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const hrs = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+      const secs = String(elapsed % 60).padStart(2, '0');
+      uptimeElem.textContent = `${hrs}:${mins}:${secs}`;
+    }
+    setInterval(updateUptime, 1000);
+    updateUptime();
+
+    /* 2. Dynamic Lanyard Spotify Colors */
+    function applyDynamicColors(rgb) {
+      if (!rgb) {
+        document.documentElement.style.setProperty("--accent-color", DEFAULT_ACCENT);
+        document.documentElement.style.setProperty("--accent-glow", DEFAULT_GLOW);
+        return;
+      }
+
+      const hex = `#${((1 << 24) + (rgb.r << 16) + (rgb.g << 8) + rgb.b).toString(16).slice(1)}`;
+      const glow = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.65)`;
+
+      document.documentElement.style.setProperty("--accent-color", hex);
+      document.documentElement.style.setProperty("--accent-glow", glow);
+    }
+
+    function extractVibrantColor(imgElement) {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = 40;
+        canvas.height = 40;
+        ctx.drawImage(imgElement, 0, 0, 40, 40);
+        const data = ctx.getImageData(0, 0, 40, 40).data;
+
+        let bestColor = null;
+        let maxScore = -1;
+
+        for (let i = 0; i < data.length; i += 16) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+          if (brightness < 40 || brightness > 230) continue;
+
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const sat = (max - min) / (max || 1);
+
+          const score = sat * 2.5 + (brightness > 80 && brightness < 200 ? 1 : 0);
+          if (score > maxScore) {
+            maxScore = score;
+            bestColor = { r, g, b };
+          }
+        }
+
+        if (bestColor) {
+          applyDynamicColors(bestColor);
+        } else {
+          applyDynamicColors({ r: 72, g: 202, b: 228 });
+        }
+      } catch (err) {
+        applyDynamicColors(null);
+      }
+    }
+
+    hiddenAlbumArt.addEventListener("load", () => {
+      extractVibrantColor(hiddenAlbumArt);
+    });
+
+    async function pollLanyard() {
+      try {
+        const response = await fetch(`${LANYARD_PROXY}?_t=${Date.now()}`);
+        if (!response.ok) return;
+        const json = await response.json();
+        const spotify = json?.data?.spotify;
+
+        if (spotify && spotify.album_art_url) {
+          if (spotify.album_art_url !== lastLoadedCover) {
+            lastLoadedCover = spotify.album_art_url;
+            hiddenAlbumArt.src = spotify.album_art_url;
+          }
+        } else {
+          lastLoadedCover = "";
+          applyDynamicColors(null);
+        }
+      } catch (err) {}
+    }
+
+    pollLanyard();
+    setInterval(pollLanyard, 3000);
+
+    /* 3. Sanitized Ko-fi Goal Polling */
+    async function pollKofiGoal() {
+      try {
+        const res = await fetch(`${KOFI_WORKER}?_t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        let raw = typeof data.raw === "string" ? data.raw.trim() : "";
+        let pct = typeof data.percentage === "number" ? data.percentage : parseFloat(data.percentage);
+
+        // Reject unparsed template placeholders like {{goalInfo}} or invalid payloads
+        const containsTemplate = raw.includes("{{") || raw.includes("}}") || raw.toLowerCase().includes("goalinfo");
+
+        if (!containsTemplate && !isNaN(pct) && pct >= 0) {
+          lastValidGoalPct = Math.min(Math.max(pct, 0), 100);
+          lastValidGoalLabel = raw.length > 0 ? raw : `${lastValidGoalPct}% of ${data.currency || '€'}${data.target || 250} Goal`;
+        }
+
+        kofiProgress.style.width = `${lastValidGoalPct}%`;
+        kofiGoalText.textContent = lastValidGoalLabel;
+      } catch (err) {}
+    }
+
+    pollKofiGoal();
+    setInterval(pollKofiGoal, 15000);
+  </script>
+</body>
+</html>
