@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Now Playing Overlay</title>
+  <title>Spotify Stream Widget - Sidebar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
@@ -50,6 +50,7 @@
       display: none !important;
     }
 
+    /* Active Track View */
     .cover-art-wrap {
       position: relative;
       width: 100%;
@@ -113,6 +114,7 @@
       transition: width 0.25s linear;
     }
 
+    /* Idle View */
     .idle-icon-wrap {
       width: 100%;
       aspect-ratio: 1 / 1;
@@ -164,21 +166,12 @@
       margin-top: 2px;
       line-height: 1.2;
     }
-
-    /* Small status bar for debugging */
-    #status-log {
-      font-size: 9px;
-      color: rgba(255, 255, 255, 0.35);
-      font-family: monospace;
-      margin-top: 6px;
-      text-align: center;
-      word-break: break-all;
-    }
   </style>
 </head>
 <body>
 
   <div class="widget-container" id="spotify-card">
+    <!-- Idle Screen -->
     <div id="idle-view" class="view-state">
       <div class="idle-icon-wrap">
         <div id="favicon-mask" class="recolored-icon"></div>
@@ -192,6 +185,7 @@
       </div>
     </div>
 
+    <!-- Active Song View -->
     <div id="active-view" class="view-state hidden">
       <div class="cover-art-wrap">
         <img id="album-art" class="cover-art" src="" alt="Album Artwork">
@@ -204,14 +198,10 @@
         </div>
       </div>
     </div>
-
-    <div id="status-log">Init...</div>
   </div>
 
   <script>
-    const DISCORD_ID = "964500222870945873";
-    const PRIMARY_URL = `https://api.lanyard.rest/v1/users/${DISCORD_ID}`;
-    const PROXY_URL = `https://corsproxy.io/?url=${encodeURIComponent(PRIMARY_URL)}`;
+    const PROXY_ENDPOINT = "https://lanyard.txao.eu/";
 
     const idleView = document.getElementById("idle-view");
     const activeView = document.getElementById("active-view");
@@ -221,15 +211,9 @@
     const progressBar = document.getElementById("progress-bar");
     const faviconMask = document.getElementById("favicon-mask");
     const fallbackIcon = document.getElementById("fallback-icon");
-    const statusLog = document.getElementById("status-log");
 
     let currentSpotify = null;
     let progressTimer = null;
-    let useProxy = false;
-
-    function logStatus(msg) {
-      if (statusLog) statusLog.textContent = msg;
-    }
 
     const testImg = new Image();
     testImg.src = "https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png";
@@ -275,31 +259,15 @@
     }
 
     async function pollLanyard() {
-      const targetUrl = useProxy ? `${PROXY_URL}&_t=${Date.now()}` : `${PRIMARY_URL}?_t=${Date.now()}`;
       try {
-        const response = await fetch(targetUrl, {
-          method: "GET",
-          headers: { "Accept": "application/json" }
-        });
-
-        if (!response.ok) {
-          logStatus(`HTTP ${response.status} (${useProxy ? 'Proxy' : 'Direct'})`);
-          if (!useProxy && (response.status === 403 || response.status === 0)) {
-            useProxy = true; // Fallback to proxy if blocked by Cloudflare
-          }
-          return;
-        }
-
+        const response = await fetch(`${PROXY_ENDPOINT}?_t=${Date.now()}`);
+        if (!response.ok) return;
         const json = await response.json();
         if (json && json.data) {
-          logStatus(json.data.spotify ? `Playing: ${json.data.spotify.song.substring(0, 16)}...` : "Connected (No Track)");
           renderSpotify(json.data.spotify);
-        } else {
-          logStatus("No data payload");
         }
       } catch (err) {
-        logStatus(`Err: ${err.message || "Failed"}`);
-        useProxy = !useProxy; // Toggle proxy fallback on fetch failure
+        // Bei Netzwerkabbrüchen still beim nächsten Tick neu versuchen
       }
     }
 
