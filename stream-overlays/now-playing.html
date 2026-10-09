@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Spotify Stream Widget - Sidebar</title>
+  <title>Now Playing Overlay</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
@@ -136,7 +136,6 @@
       filter: drop-shadow(0 0 8px rgba(72, 202, 228, 0.5));
     }
 
-    /* Fallback if external image asset fails to load */
     .fallback-svg {
       display: none;
       width: 54px;
@@ -172,7 +171,6 @@
 <body>
 
   <div class="widget-container" id="spotify-card">
-    <!-- Idle Screen -->
     <div id="idle-view" class="view-state">
       <div class="idle-icon-wrap">
         <div id="favicon-mask" class="recolored-icon"></div>
@@ -186,10 +184,9 @@
       </div>
     </div>
 
-    <!-- Active Song View -->
     <div id="active-view" class="view-state hidden">
       <div class="cover-art-wrap">
-        <img id="album-art" class="cover-art" src="" alt="Album Artwork" crossorigin="anonymous">
+        <img id="album-art" class="cover-art" src="" alt="Album Artwork">
       </div>
       <div class="track-details">
         <div class="track-title" id="track-name">Track Title</div>
@@ -203,7 +200,7 @@
 
   <script>
     const DISCORD_ID = "964500222870945873";
-    const LANYARD_WS = "wss://api.lanyard.rest/socket";
+    const REST_URL = `https://api.lanyard.rest/v1/users/${DISCORD_ID}`;
 
     const idleView = document.getElementById("idle-view");
     const activeView = document.getElementById("active-view");
@@ -215,11 +212,8 @@
     const fallbackIcon = document.getElementById("fallback-icon");
 
     let currentSpotify = null;
-    let heartbeatInterval = null;
     let progressTimer = null;
-    let socket = null;
 
-    // Direct stream moderation safety filter for high-risk words
     const BLOCKED_TERMS = [
       /\bnigger[s]?\b/gi,
       /\bnigga[s]?\b/gi,
@@ -237,7 +231,6 @@
       return clean;
     }
 
-    // Verify external image accessibility
     const testImg = new Image();
     testImg.src = "https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png";
     testImg.onerror = () => {
@@ -260,14 +253,15 @@
       if (!spotifyData) {
         currentSpotify = null;
         if (progressTimer) clearInterval(progressTimer);
-
         activeView.classList.add("hidden");
         idleView.classList.remove("hidden");
         return;
       }
 
       currentSpotify = spotifyData;
-      albumArt.src = spotifyData.album_art_url || "";
+      if (albumArt.src !== spotifyData.album_art_url) {
+        albumArt.src = spotifyData.album_art_url || "";
+      }
       trackName.textContent = filterTOSContent(spotifyData.song || "");
       artistName.textContent = filterTOSContent(spotifyData.artist || "");
 
@@ -280,42 +274,21 @@
       }
     }
 
-    function connect() {
-      socket = new WebSocket(LANYARD_WS);
-
-      socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        const { op, t, d } = message;
-
-        if (op === 1) {
-          const heartbeatMs = d.heartbeat_interval;
-          if (heartbeatInterval) clearInterval(heartbeatInterval);
-          heartbeatInterval = setInterval(() => {
-            socket.send(JSON.stringify({ op: 3 }));
-          }, heartbeatMs);
-
-          socket.send(JSON.stringify({
-            op: 2,
-            d: { subscribe_to_id: DISCORD_ID }
-          }));
+    async function pollLanyard() {
+      try {
+        const response = await fetch(REST_URL, { cache: "no-store" });
+        if (!response.ok) return;
+        const json = await response.json();
+        if (json && json.data) {
+          renderSpotify(json.data.spotify);
         }
-
-        if (t === "INIT_STATE" || t === "PRESENCE_UPDATE") {
-          renderSpotify(d.spotify);
-        }
-      };
-
-      socket.onclose = () => {
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        setTimeout(connect, 5000);
-      };
-
-      socket.onerror = () => {
-        socket.close();
-      };
+      } catch (err) {
+        console.error("Lanyard REST request failed:", err);
+      }
     }
 
-    connect();
+    pollLanyard();
+    setInterval(pollLanyard, 3000);
   </script>
 </body>
 </html>
