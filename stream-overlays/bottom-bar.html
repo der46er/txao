@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stream Bottom Overlay - All-in-One Bar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========================================================
+       CONFIG & THEME DEFAULTS
+       ======================================================== */
+    :root {
+      /* Dynamic Accent Defaults (Fallback / Idle Mode) */
+      --accent-color: #48cae4; 
+      --accent-glow: rgba(72, 202, 228, 0.55);
+
+      --spotify-progress-color: #48cae4;
+      --spotify-progress-glow: rgba(72, 202, 228, 0.65);
+
+      /* Glassmorphism Styles */
+      --card-bg: rgba(12, 14, 18, 0.72);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --card-radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 1920px;
+      height: 147px;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 16px;
+    }
+
+    /* Stream Bar Container */
+    .stream-bar {
+      width: 100%;
+      height: 139px;
+      padding: 14px 28px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      transition: border-color 0.8s ease;
+    }
+
+    /* ========================================================
+       1. FOLLOWER GOAL BAR (EXPANDED TO 530PX)
+       ======================================================== */
+    .follower-box {
+      position: relative;
+      width: 530px;
+      height: 96px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .follower-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      background: var(--accent-color);
+      box-shadow: 0 0 18px var(--accent-glow);
+      border-radius: 12px;
+      transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.8s ease, box-shadow 0.8s ease;
+      z-index: 1;
+    }
+
+    .follower-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 26px 0 20px;
+    }
+
+    .follower-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-icon svg {
+      width: 26px;
+      height: 26px;
+      fill: #ffffff;
+    }
+
+    .label-title {
+      color: #ffffff;
+      font-size: 25px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .counter-text {
+      color: #ffffff;
+      font-size: 25px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+
+    .counter-text .slash {
+      opacity: 0.6;
+      font-weight: 700;
+      margin: 0 4px;
+    }
+
+    /* ========================================================
+       2. DISCORD PROMO SECTION (MASSIVE IN CENTER)
+       ======================================================== */
+    .discord-promo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.2;
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .discord-heading {
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .discord-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: #ffffff;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      margin-top: 2px;
+    }
+
+    .arrows {
+      color: var(--accent-color);
+      font-size: 28px;
+      text-shadow: 0 0 14px var(--accent-glow);
+      user-select: none;
+      transition: color 0.8s ease, text-shadow 0.8s ease;
+    }
+
+    /* ========================================================
+       3. SPOTIFY / IDLE SECTION (EXPANDED TO 570PX)
+       ======================================================== */
+    .spotify-section {
+      width: 570px;
+      height: 105px;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .view-state {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .cover-art-wrap {
+      position: relative;
+      width: 105px;
+      height: 105px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
+    }
+
+    .cover-art {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .track-details {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      justify-content: center;
+    }
+
+    .track-title {
+      color: #ffffff;
+      font-size: 23px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+
+    .track-artist {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 18px;
+      font-weight: 400;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 4px;
+      line-height: 1.2;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--spotify-progress-color);
+      box-shadow: 0 0 12px var(--spotify-progress-glow);
+      border-radius: 999px;
+      transition: width 0.25s linear, background 0.8s ease, box-shadow 0.8s ease;
+    }
+
+    /* Idle Display */
+    .idle-icon-wrap {
+      width: 105px;
+      height: 105px;
+      border-radius: 12px;
+      background: radial-gradient(circle at center, rgba(72, 202, 228, 0.1) 0%, rgba(255, 255, 255, 0.02) 75%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .recolored-icon {
+      width: 58px;
+      height: 58px;
+      background-color: var(--accent-color);
+      -webkit-mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
+      mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
+      filter: drop-shadow(0 0 10px var(--accent-glow));
+      transition: background-color 0.8s ease, filter 0.8s ease;
+    }
+
+    .fallback-svg {
+      display: none;
+      width: 52px;
+      height: 52px;
+      fill: var(--accent-color);
+      filter: drop-shadow(0 0 10px var(--accent-glow));
+      transition: fill 0.8s ease, filter 0.8s ease;
+    }
+
+    .idle-details {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      justify-content: center;
+    }
+
+    .idle-title {
+      color: #ffffff;
+      font-size: 23px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .idle-subtitle {
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 17px;
+      font-weight: 400;
+      margin-top: 4px;
+      line-height: 1.2;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="stream-bar">
+    <!-- 1. Follower Goal -->
+    <div class="follower-box">
+      <div class="follower-progress" id="progress-fill"></div>
+      <div class="follower-content">
+        <div class="follower-left">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.12V9.42a6.34 6.34 0 0 0-.86-.06 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V9.05a8.28 8.28 0 0 0 5.22 1.83V7.43a4.85 4.85 0 0 1-1.45-.74z"/>
+            </svg>
+          </div>
+          <span class="label-title">Follows</span>
+        </div>
+        <div class="counter-text">
+          <span id="current-count">2504</span><span class="slash">/</span><span id="goal-count">3000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Discord Callout (Massive in Center) -->
+    <div class="discord-promo">
+      <div class="discord-heading">Join the Discord</div>
+      <div class="discord-link">
+        <span class="arrows">&rarr; &rarr; &rarr;</span>
+        <span>txao.eu/discord</span>
+        <span class="arrows">&larr; &larr; &larr;</span>
+      </div>
+    </div>
+
+    <!-- 3. Spotify / Idle Player -->
+    <div class="spotify-section">
+      <!-- Idle State -->
+      <div id="idle-view" class="view-state">
+        <div class="idle-icon-wrap">
+          <div id="favicon-mask" class="recolored-icon"></div>
+          <svg id="fallback-icon" class="fallback-svg" viewBox="0 0 24 24">
+            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+          </svg>
+        </div>
+        <div class="idle-details">
+          <div class="idle-title">Nothing Playing</div>
+          <div class="idle-subtitle">Nothing going on right now</div>
+        </div>
+      </div>
+
+      <!-- Active Track State -->
+      <div id="active-view" class="view-state hidden">
+        <div class="cover-art-wrap">
+          <img id="album-art" class="cover-art" src="" alt="Album Artwork" crossorigin="anonymous">
+        </div>
+        <div class="track-details">
+          <div class="track-title" id="track-name">Track Title</div>
+          <div class="track-artist" id="artist-name">Artist</div>
+          <div class="progress-track">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       CONFIG: ZIEL, API & WORKER DEFINITION
+       ======================================================== */
+    const FOLLOWER_GOAL = 3000;
+    let currentFollowers = 2504;
+    const FOLLOWER_API = "https://lanyard.txao.eu/tiktok-followers";
+    const LANYARD_PROXY = "https://lanyard.txao.eu/";
+
+    const DEFAULT_ACCENT = "#48cae4";
+    const DEFAULT_GLOW = "rgba(72, 202, 228, 0.55)";
+
+    /* Elements */
+    const currentElem = document.getElementById("current-count");
+    const goalElem = document.getElementById("goal-count");
+    const progressFill = document.getElementById("progress-fill");
+
+    const idleView = document.getElementById("idle-view");
+    const activeView = document.getElementById("active-view");
+    const albumArt = document.getElementById("album-art");
+    const trackName = document.getElementById("track-name");
+    const artistName = document.getElementById("artist-name");
+    const progressBar = document.getElementById("progress-bar");
+    const faviconMask = document.getElementById("favicon-mask");
+    const fallbackIcon = document.getElementById("fallback-icon");
+
+    let currentSpotify = null;
+    let progressTimer = null;
+    let lastLoadedCover = "";
+
+    /* Follower Handling */
+    function updateFollowerDisplay(current, goal) {
+      currentElem.textContent = current.toLocaleString();
+      goalElem.textContent = goal.toLocaleString();
+      const pct = Math.min(Math.max((current / goal) * 100, 0), 100);
+      progressFill.style.width = `${pct}%`;
+    }
+
+    async function pollFollowers() {
+      try {
+        const res = await fetch(`${FOLLOWER_API}?_t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && typeof data.followers === "number") {
+          currentFollowers = data.followers;
+          updateFollowerDisplay(currentFollowers, data.goal || FOLLOWER_GOAL);
+        }
+      } catch (e) {}
+    }
+
+    updateFollowerDisplay(currentFollowers, FOLLOWER_GOAL);
+    setInterval(pollFollowers, 5000);
+
+    /* Dynamic Color Extractor */
+    function applyDynamicColors(rgb) {
+      if (!rgb) {
+        document.documentElement.style.setProperty("--accent-color", DEFAULT_ACCENT);
+        document.documentElement.style.setProperty("--accent-glow", DEFAULT_GLOW);
+        document.documentElement.style.setProperty("--spotify-progress-color", DEFAULT_ACCENT);
+        document.documentElement.style.setProperty("--spotify-progress-glow", DEFAULT_GLOW);
+        return;
+      }
+
+      const hex = `#${((1 << 24) + (rgb.r << 16) + (rgb.g << 8) + rgb.b).toString(16).slice(1)}`;
+      const glow = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.65)`;
+
+      document.documentElement.style.setProperty("--accent-color", hex);
+      document.documentElement.style.setProperty("--accent-glow", glow);
+      document.documentElement.style.setProperty("--spotify-progress-color", hex);
+      document.documentElement.style.setProperty("--spotify-progress-glow", glow);
+    }
+
+    function extractVibrantColor(imgElement) {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = 40;
+        canvas.height = 40;
+        ctx.drawImage(imgElement, 0, 0, 40, 40);
+        const data = ctx.getImageData(0, 0, 40, 40).data;
+
+        let bestColor = null;
+        let maxScore = -1;
+
+        for (let i = 0; i < data.length; i += 16) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // Compute perceived brightness
+          const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+          // Filter out near-pure blacks, near-whites, and dull grays
+          if (brightness < 40 || brightness > 230) continue;
+
+          // Saturation measurement
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const sat = (max - min) / (max || 1);
+
+          // Boost vibrant colors
+          const score = sat * 2.5 + (brightness > 80 && brightness < 200 ? 1 : 0);
+          if (score > maxScore) {
+            maxScore = score;
+            bestColor = { r, g, b };
+          }
+        }
+
+        if (bestColor) {
+          applyDynamicColors(bestColor);
+        } else {
+          applyDynamicColors({ r: 72, g: 202, b: 228 });
+        }
+      } catch (err) {
+        applyDynamicColors(null);
+      }
+    }
+
+    albumArt.addEventListener("load", () => {
+      extractVibrantColor(albumArt);
+    });
+
+    /* Favicon Fallback Handler */
+    const testImg = new Image();
+    testImg.src = "https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png";
+    testImg.onerror = () => {
+      faviconMask.style.display = "none";
+      fallbackIcon.style.display = "block";
+    };
+
+    /* Progress & Spotify Handling */
+    function updateSpotifyProgress() {
+      if (!currentSpotify || !currentSpotify.timestamps) return;
+      const start = currentSpotify.timestamps.start;
+      const end = currentSpotify.timestamps.end;
+      const now = Date.now();
+      const total = end - start;
+      const current = Math.min(Math.max(now - start, 0), total);
+      const percentage = (current / total) * 100;
+      progressBar.style.width = `${percentage}%`;
+    }
+
+    function renderSpotify(spotifyData) {
+      if (!spotifyData) {
+        currentSpotify = null;
+        lastLoadedCover = "";
+        if (progressTimer) clearInterval(progressTimer);
+        activeView.classList.add("hidden");
+        idleView.classList.remove("hidden");
+        applyDynamicColors(null);
+        return;
+      }
+
+      currentSpotify = spotifyData;
+
+      if (spotifyData.album_art_url && spotifyData.album_art_url !== lastLoadedCover) {
+        lastLoadedCover = spotifyData.album_art_url;
+        albumArt.src = spotifyData.album_art_url;
+      }
+
+      trackName.textContent = spotifyData.song || "";
+      artistName.textContent = spotifyData.artist || "";
+
+      idleView.classList.add("hidden");
+      activeView.classList.remove("hidden");
+
+      updateSpotifyProgress();
+      if (!progressTimer) {
+        progressTimer = setInterval(updateSpotifyProgress, 1000);
+      }
+    }
+
+    async function pollLanyard() {
+      try {
+        const response = await fetch(`${LANYARD_PROXY}?_t=${Date.now()}`);
+        if (!response.ok) return;
+        const json = await response.json();
+        if (json && json.data) {
+          renderSpotify(json.data.spotify);
+        }
+      } catch (err) {}
+    }
+
+    pollLanyard();
+    setInterval(pollLanyard, 3000);
+  </script>
+</body>
+</html>
