@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Spotify Stream Widget - Sidebar</title>
+  <title>Spotify Stream Widget - 1440p Sidebar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
@@ -22,27 +22,27 @@
       height: 100vh;
       display: flex;
       justify-content: flex-end;
-      align-items: flex-start;
-      padding-top: 18px;
-      padding-right: 14px;
+      align-items: flex-end;
+      padding-bottom: 24px;
+      padding-right: 100px;
     }
 
     .widget-container {
-      width: 216px;
-      padding: 12px;
+      width: 768px;
+      padding: 24px;
       background: rgba(12, 14, 18, 0.65);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(38px);
+      -webkit-backdrop-filter: blur(38px);
+      border: 2.4px solid rgba(255, 255, 255, 0.08);
+      border-radius: 34px;
+      box-shadow: 0 14px 67px rgba(0, 0, 0, 0.45);
       position: relative;
     }
 
     .view-state {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 29px;
       transition: opacity 0.3s ease;
     }
 
@@ -55,10 +55,10 @@
       position: relative;
       width: 100%;
       aspect-ratio: 1 / 1;
-      border-radius: 8px;
+      border-radius: 24px;
       overflow: hidden;
       background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 2.4px solid rgba(255, 255, 255, 0.06);
     }
 
     .cover-art {
@@ -77,7 +77,7 @@
 
     .track-title {
       color: #ffffff;
-      font-size: 13px;
+      font-size: 38px;
       font-weight: 700;
       white-space: nowrap;
       overflow: hidden;
@@ -87,21 +87,21 @@
 
     .track-artist {
       color: rgba(255, 255, 255, 0.65);
-      font-size: 11px;
+      font-size: 31px;
       font-weight: 400;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-top: 2px;
+      margin-top: 7px;
       line-height: 1.2;
     }
 
     .progress-track {
       width: 100%;
-      height: 3px;
+      height: 10px;
       background: rgba(255, 255, 255, 0.1);
       border-radius: 999px;
-      margin-top: 6px;
+      margin-top: 19px;
       overflow: hidden;
     }
 
@@ -109,18 +109,18 @@
       height: 100%;
       width: 0%;
       background: #48cae4;
-      box-shadow: 0 0 8px rgba(72, 202, 228, 0.45);
+      box-shadow: 0 0 24px rgba(72, 202, 228, 0.5);
       border-radius: 999px;
-      transition: width 0.25s linear;
+      transition: width 0.25s linear, background 0.4s ease, box-shadow 0.4s ease;
     }
 
     /* Idle View */
     .idle-icon-wrap {
       width: 100%;
       aspect-ratio: 1 / 1;
-      border-radius: 8px;
+      border-radius: 24px;
       background: radial-gradient(circle at center, rgba(72, 202, 228, 0.08) 0%, rgba(255, 255, 255, 0.02) 75%);
-      border: 1px solid rgba(72, 202, 228, 0.15);
+      border: 2.4px solid rgba(72, 202, 228, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -128,20 +128,20 @@
     }
 
     .recolored-icon {
-      width: 58px;
-      height: 58px;
+      width: 720px;
+      height: 720px;
       background-color: #48cae4;
       -webkit-mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
       mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
-      filter: drop-shadow(0 0 8px rgba(72, 202, 228, 0.5));
+      filter: drop-shadow(0 0 24px rgba(72, 202, 228, 0.55));
     }
 
     .fallback-svg {
       display: none;
-      width: 54px;
-      height: 54px;
+      width: 163px;
+      height: 163px;
       fill: #48cae4;
-      filter: drop-shadow(0 0 8px rgba(72, 202, 228, 0.5));
+      filter: drop-shadow(0 0 24px rgba(72, 202, 228, 0.55));
     }
 
     .idle-details {
@@ -149,21 +149,21 @@
       flex-direction: column;
       width: 100%;
       text-align: center;
-      padding-top: 2px;
+      padding-top: 5px;
     }
 
     .idle-title {
       color: #ffffff;
-      font-size: 13px;
+      font-size: 38px;
       font-weight: 700;
       line-height: 1.25;
     }
 
     .idle-subtitle {
       color: rgba(255, 255, 255, 0.5);
-      font-size: 11px;
+      font-size: 31px;
       font-weight: 400;
-      margin-top: 2px;
+      margin-top: 7px;
       line-height: 1.2;
     }
   </style>
@@ -188,7 +188,7 @@
     <!-- Active Song View -->
     <div id="active-view" class="view-state hidden">
       <div class="cover-art-wrap">
-        <img id="album-art" class="cover-art" src="" alt="Album Artwork">
+        <img id="album-art" class="cover-art" src="" alt="Album Artwork" crossorigin="anonymous">
       </div>
       <div class="track-details">
         <div class="track-title" id="track-name">Track Title</div>
@@ -202,6 +202,8 @@
 
   <script>
     const PROXY_ENDPOINT = "https://lanyard.txao.eu/";
+    const DEFAULT_ACCENT = "#48cae4";
+    const MIN_LIGHTNESS = 0.58;
 
     const idleView = document.getElementById("idle-view");
     const activeView = document.getElementById("active-view");
@@ -214,6 +216,7 @@
 
     let currentSpotify = null;
     let progressTimer = null;
+    let lastCoverUrl = "";
 
     const testImg = new Image();
     testImg.src = "https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png";
@@ -221,6 +224,101 @@
       faviconMask.style.display = "none";
       fallbackIcon.style.display = "block";
     };
+
+    function rgbToHsl(r, g, b) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h = 0;
+      let s = 0;
+      const l = (max + min) / 2;
+
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: h = ((b - r) / d + 2) / 6; break;
+          case b: h = ((r - g) / d + 4) / 6; break;
+        }
+      }
+      return [h, s, l];
+    }
+
+    function hslToRgb(h, s, l) {
+      function hueToRgb(p, q, t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      }
+
+      if (s === 0) {
+        const grey = Math.round(l * 255);
+        return [grey, grey, grey];
+      }
+
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      return [
+        Math.round(hueToRgb(p, q, h + 1 / 3) * 255),
+        Math.round(hueToRgb(p, q, h) * 255),
+        Math.round(hueToRgb(p, q, h - 1 / 3) * 255)
+      ];
+    }
+
+    function applyBarColor(r, g, b) {
+      progressBar.style.background = `rgb(${r}, ${g}, ${b})`;
+      progressBar.style.boxShadow = `0 0 24px rgba(${r}, ${g}, ${b}, 0.55)`;
+    }
+
+    function extractCoverColor(imgElement) {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const sampleSize = 64;
+        canvas.width = sampleSize;
+        canvas.height = sampleSize;
+        ctx.drawImage(imgElement, 0, 0, sampleSize, sampleSize);
+
+        const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+        let bestScore = -1;
+        let chosenRgb = [72, 202, 228];
+
+        for (let i = 0; i < data.length; i += 16) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const a = data[i + 3];
+          if (a < 128) continue;
+
+          const [h, s, l] = rgbToHsl(r, g, b);
+          const score = s * 2 + (l > 0.2 && l < 0.85 ? 1 : 0);
+          if (score > bestScore) {
+            bestScore = score;
+            chosenRgb = [r, g, b];
+          }
+        }
+
+        let [h, s, l] = rgbToHsl(...chosenRgb);
+        if (l < MIN_LIGHTNESS) {
+          l = MIN_LIGHTNESS;
+        }
+        if (s < 0.25) {
+          s = 0.45;
+        }
+
+        const [adjR, adjG, adjB] = hslToRgb(h, s, l);
+        applyBarColor(adjR, adjG, adjB);
+      } catch (err) {
+        progressBar.style.background = DEFAULT_ACCENT;
+        progressBar.style.boxShadow = "0 0 24px rgba(72, 202, 228, 0.5)";
+      }
+    }
 
     function updateProgressBar() {
       if (!currentSpotify || !currentSpotify.timestamps) return;
@@ -236,6 +334,7 @@
     function renderSpotify(spotifyData) {
       if (!spotifyData) {
         currentSpotify = null;
+        lastCoverUrl = "";
         if (progressTimer) clearInterval(progressTimer);
         activeView.classList.add("hidden");
         idleView.classList.remove("hidden");
@@ -246,6 +345,19 @@
       if (albumArt.src !== spotifyData.album_art_url) {
         albumArt.src = spotifyData.album_art_url || "";
       }
+
+      if (spotifyData.album_art_url && spotifyData.album_art_url !== lastCoverUrl) {
+        lastCoverUrl = spotifyData.album_art_url;
+        const colorSampler = new Image();
+        colorSampler.crossOrigin = "anonymous";
+        colorSampler.src = spotifyData.album_art_url;
+        colorSampler.onload = () => extractCoverColor(colorSampler);
+        colorSampler.onerror = () => {
+          progressBar.style.background = DEFAULT_ACCENT;
+          progressBar.style.boxShadow = "0 0 24px rgba(72, 202, 228, 0.5)";
+        };
+      }
+
       trackName.textContent = spotifyData.song || "";
       artistName.textContent = spotifyData.artist || "";
 
@@ -267,7 +379,7 @@
           renderSpotify(json.data.spotify);
         }
       } catch (err) {
-        // Bei Netzwerkabbrüchen still beim nächsten Tick neu versuchen
+        // Silently retry on next tick
       }
     }
 
