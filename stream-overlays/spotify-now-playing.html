@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spotify Stream Widget - Sidebar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+      padding-top: 18px;
+      padding-right: 14px;
+    }
+
+    .widget-container {
+      width: 216px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(12, 14, 18, 0.65);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      pointer-events: none;
+    }
+
+    .widget-container.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .cover-art-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .cover-art {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .track-details {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .track-title {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+
+    .track-artist {
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 11px;
+      font-weight: 400;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #48cae4;
+      box-shadow: 0 0 8px rgba(72, 202, 228, 0.4);
+      border-radius: 999px;
+      transition: width 0.25s linear;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="widget-container" id="spotify-card">
+    <div class="cover-art-wrap">
+      <img id="album-art" class="cover-art" src="" alt="Album Artwork">
+    </div>
+
+    <div class="track-details">
+      <div class="track-title" id="track-name">Track Title</div>
+      <div class="track-artist" id="artist-name">Artist</div>
+      <div class="progress-track">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DISCORD_ID = "964500222870945873";
+    const LANYARD_WS = "wss://api.lanyard.rest/socket";
+
+    const card = document.getElementById("spotify-card");
+    const albumArt = document.getElementById("album-art");
+    const trackName = document.getElementById("track-name");
+    const artistName = document.getElementById("artist-name");
+    const progressBar = document.getElementById("progress-bar");
+
+    let currentSpotify = null;
+    let heartbeatInterval = null;
+    let progressTimer = null;
+    let socket = null;
+
+    function updateProgressBar() {
+      if (!currentSpotify || !currentSpotify.timestamps) return;
+      const start = currentSpotify.timestamps.start;
+      const end = currentSpotify.timestamps.end;
+      const now = Date.now();
+      const total = end - start;
+      const current = Math.min(Math.max(now - start, 0), total);
+      const percentage = (current / total) * 100;
+      progressBar.style.width = `${percentage}%`;
+    }
+
+    function renderSpotify(spotifyData) {
+      if (!spotifyData) {
+        currentSpotify = null;
+        card.classList.remove("active");
+        if (progressTimer) clearInterval(progressTimer);
+        return;
+      }
+
+      currentSpotify = spotifyData;
+      albumArt.src = spotifyData.album_art_url;
+      trackName.textContent = spotifyData.song;
+      artistName.textContent = spotifyData.artist;
+
+      card.classList.add("active");
+      updateProgressBar();
+
+      if (!progressTimer) {
+        progressTimer = setInterval(updateProgressBar, 1000);
+      }
+    }
+
+    function connect() {
+      socket = new WebSocket(LANYARD_WS);
+
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        const { op, t, d } = message;
+
+        if (op === 1) {
+          const heartbeatMs = d.heartbeat_interval;
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          heartbeatInterval = setInterval(() => {
+            socket.send(JSON.stringify({ op: 3 }));
+          }, heartbeatMs);
+
+          socket.send(JSON.stringify({
+            op: 2,
+            d: { subscribe_to_id: DISCORD_ID }
+          }));
+        }
+
+        if (t === "INIT_STATE" || t === "PRESENCE_UPDATE") {
+          renderSpotify(d.spotify);
+        }
+      };
+
+      socket.onclose = () => {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        setTimeout(connect, 5000);
+      };
+
+      socket.onerror = () => {
+        socket.close();
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>
