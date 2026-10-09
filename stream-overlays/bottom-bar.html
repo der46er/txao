@@ -8,18 +8,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 
   <style>
-    /* ========================================================
-       CONFIG & THEME DEFAULTS
-       ======================================================== */
     :root {
-      /* Dynamic Accent Defaults (Fallback / Idle Mode) */
       --accent-color: #48cae4; 
       --accent-glow: rgba(72, 202, 228, 0.55);
 
       --spotify-progress-color: #48cae4;
       --spotify-progress-glow: rgba(72, 202, 228, 0.65);
 
-      /* Glassmorphism Styles */
       --card-bg: rgba(12, 14, 18, 0.72);
       --card-border: rgba(255, 255, 255, 0.12);
       --card-radius: 14px;
@@ -43,14 +38,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 4px 16px;
+      padding: 0 16px;
     }
 
-    /* Stream Bar Container */
     .stream-bar {
       width: 100%;
-      height: 139px;
-      padding: 14px 28px;
+      height: 120px;
+      padding: 12px 24px;
       background: var(--card-bg);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -64,13 +58,11 @@
       transition: border-color 0.8s ease;
     }
 
-    /* ========================================================
-       1. FOLLOWER GOAL BAR (EXPANDED TO 530PX)
-       ======================================================== */
+    /* --- 1. Follower Goal Bar --- */
     .follower-box {
       position: relative;
       width: 530px;
-      height: 96px;
+      height: 80px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.09);
       border-radius: 12px;
@@ -89,7 +81,7 @@
       background: var(--accent-color);
       box-shadow: 0 0 18px var(--accent-glow);
       border-radius: 12px;
-      transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.8s ease, box-shadow 0.8s ease;
+      transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.8s ease, box-shadow 0.8s ease;
       z-index: 1;
     }
 
@@ -100,18 +92,18 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      padding: 0 26px 0 20px;
+      padding: 0 24px 0 16px;
     }
 
     .follower-left {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
 
     .brand-icon {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border-radius: 10px;
       background: rgba(0, 0, 0, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.15);
@@ -119,17 +111,19 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      padding: 8px;
     }
 
-    .brand-icon svg {
-      width: 26px;
-      height: 26px;
-      fill: #ffffff;
+    .brand-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
     .label-title {
       color: #ffffff;
-      font-size: 25px;
+      font-size: 22px;
       font-weight: 900;
       letter-spacing: 0.03em;
       text-transform: uppercase;
@@ -137,7 +131,7 @@
 
     .counter-text {
       color: #ffffff;
-      font-size: 25px;
+      font-size: 22px;
       font-weight: 900;
       letter-spacing: 0.03em;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
@@ -149,9 +143,7 @@
       margin: 0 4px;
     }
 
-    /* ========================================================
-       2. DISCORD PROMO SECTION (MASSIVE IN CENTER)
-       ======================================================== */
+    /* --- 2. Discord Promo --- */
     .discord-promo {
       display: flex;
       flex-direction: column;
@@ -165,7 +157,7 @@
 
     .discord-heading {
       color: #ffffff;
-      font-size: 22px;
+      font-size: 19px;
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -178,26 +170,24 @@
       justify-content: center;
       gap: 14px;
       color: #ffffff;
-      font-size: 34px;
+      font-size: 30px;
       font-weight: 900;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.02em;
       margin-top: 2px;
     }
 
     .arrows {
       color: var(--accent-color);
-      font-size: 28px;
+      font-size: 24px;
       text-shadow: 0 0 14px var(--accent-glow);
       user-select: none;
       transition: color 0.8s ease, text-shadow 0.8s ease;
     }
 
-    /* ========================================================
-       3. SPOTIFY / IDLE SECTION (EXPANDED TO 570PX)
-       ======================================================== */
+    /* --- 3. Spotify / Idle Player --- */
     .spotify-section {
-      width: 570px;
-      height: 105px;
+      width: 560px;
+      height: 84px;
       display: flex;
       align-items: center;
       flex-shrink: 0;
@@ -206,7 +196,7 @@
     .view-state {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
       width: 100%;
       height: 100%;
     }
@@ -217,9 +207,9 @@
 
     .cover-art-wrap {
       position: relative;
-      width: 105px;
-      height: 105px;
-      border-radius: 12px;
+      width: 84px;
+      height: 84px;
+      border-radius: 10px;
       overflow: hidden;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -244,7 +234,7 @@
 
     .track-title {
       color: #ffffff;
-      font-size: 23px;
+      font-size: 20px;
       font-weight: 700;
       white-space: nowrap;
       overflow: hidden;
@@ -254,21 +244,21 @@
 
     .track-artist {
       color: rgba(255, 255, 255, 0.7);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 400;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-top: 4px;
+      margin-top: 3px;
       line-height: 1.2;
     }
 
     .progress-track {
       width: 100%;
-      height: 6px;
+      height: 5px;
       background: rgba(255, 255, 255, 0.14);
       border-radius: 999px;
-      margin-top: 10px;
+      margin-top: 8px;
       overflow: hidden;
     }
 
@@ -281,11 +271,10 @@
       transition: width 0.25s linear, background 0.8s ease, box-shadow 0.8s ease;
     }
 
-    /* Idle Display */
     .idle-icon-wrap {
-      width: 105px;
-      height: 105px;
-      border-radius: 12px;
+      width: 84px;
+      height: 84px;
+      border-radius: 10px;
       background: radial-gradient(circle at center, rgba(72, 202, 228, 0.1) 0%, rgba(255, 255, 255, 0.02) 75%);
       border: 1px solid rgba(255, 255, 255, 0.12);
       display: flex;
@@ -295,8 +284,8 @@
     }
 
     .recolored-icon {
-      width: 58px;
-      height: 58px;
+      width: 48px;
+      height: 48px;
       background-color: var(--accent-color);
       -webkit-mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
       mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
@@ -306,8 +295,8 @@
 
     .fallback-svg {
       display: none;
-      width: 52px;
-      height: 52px;
+      width: 44px;
+      height: 44px;
       fill: var(--accent-color);
       filter: drop-shadow(0 0 10px var(--accent-glow));
       transition: fill 0.8s ease, filter 0.8s ease;
@@ -323,16 +312,16 @@
 
     .idle-title {
       color: #ffffff;
-      font-size: 23px;
+      font-size: 20px;
       font-weight: 700;
       line-height: 1.25;
     }
 
     .idle-subtitle {
       color: rgba(255, 255, 255, 0.55);
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 400;
-      margin-top: 4px;
+      margin-top: 3px;
       line-height: 1.2;
     }
   </style>
@@ -346,19 +335,17 @@
       <div class="follower-content">
         <div class="follower-left">
           <div class="brand-icon">
-            <svg viewBox="0 0 24 24">
-              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.12V9.42a6.34 6.34 0 0 0-.86-.06 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V9.05a8.28 8.28 0 0 0 5.22 1.83V7.43a4.85 4.85 0 0 1-1.45-.74z"/>
-            </svg>
+            <img src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/tiktok/default.svg" alt="TikTok">
           </div>
-          <span class="label-title">Follows</span>
+          <span class="label-title">Followers</span>
         </div>
         <div class="counter-text">
-          <span id="current-count">2504</span><span class="slash">/</span><span id="goal-count">3000</span>
+          <span id="current-count">--</span><span class="slash">/</span><span id="goal-count">3000</span>
         </div>
       </div>
     </div>
 
-    <!-- 2. Discord Callout (Massive in Center) -->
+    <!-- 2. Discord Promo -->
     <div class="discord-promo">
       <div class="discord-heading">Join the Discord</div>
       <div class="discord-link">
@@ -370,7 +357,6 @@
 
     <!-- 3. Spotify / Idle Player -->
     <div class="spotify-section">
-      <!-- Idle State -->
       <div id="idle-view" class="view-state">
         <div class="idle-icon-wrap">
           <div id="favicon-mask" class="recolored-icon"></div>
@@ -384,7 +370,6 @@
         </div>
       </div>
 
-      <!-- Active Track State -->
       <div id="active-view" class="view-state hidden">
         <div class="cover-art-wrap">
           <img id="album-art" class="cover-art" src="" alt="Album Artwork" crossorigin="anonymous">
@@ -401,18 +386,13 @@
   </div>
 
   <script>
-    /* ========================================================
-       CONFIG: ZIEL, API & WORKER DEFINITION
-       ======================================================== */
     const FOLLOWER_GOAL = 3000;
-    let currentFollowers = 2504;
-    const FOLLOWER_API = "https://lanyard.txao.eu/tiktok-followers";
+    const COUNTIK_ENDPOINT = "https://countik.txao.eu";
     const LANYARD_PROXY = "https://lanyard.txao.eu/";
 
     const DEFAULT_ACCENT = "#48cae4";
     const DEFAULT_GLOW = "rgba(72, 202, 228, 0.55)";
 
-    /* Elements */
     const currentElem = document.getElementById("current-count");
     const goalElem = document.getElementById("goal-count");
     const progressFill = document.getElementById("progress-fill");
@@ -430,27 +410,30 @@
     let progressTimer = null;
     let lastLoadedCover = "";
 
-    /* Follower Handling */
     function updateFollowerDisplay(current, goal) {
+      if (typeof current !== "number" || isNaN(current)) return;
       currentElem.textContent = current.toLocaleString();
       goalElem.textContent = goal.toLocaleString();
       const pct = Math.min(Math.max((current / goal) * 100, 0), 100);
       progressFill.style.width = `${pct}%`;
     }
 
+    goalElem.textContent = FOLLOWER_GOAL.toLocaleString();
+
     async function pollFollowers() {
       try {
-        const res = await fetch(`${FOLLOWER_API}?_t=${Date.now()}`);
+        const res = await fetch(`${COUNTIK_ENDPOINT}?_t=${Date.now()}`);
         if (!res.ok) return;
         const data = await res.json();
-        if (data && typeof data.followers === "number") {
-          currentFollowers = data.followers;
-          updateFollowerDisplay(currentFollowers, data.goal || FOLLOWER_GOAL);
+        
+        const count = data?.followerCount ?? data?.followers ?? data?.count;
+        if (typeof count === "number") {
+          updateFollowerDisplay(count, FOLLOWER_GOAL);
         }
-      } catch (e) {}
+      } catch (err) {}
     }
 
-    updateFollowerDisplay(currentFollowers, FOLLOWER_GOAL);
+    pollFollowers();
     setInterval(pollFollowers, 5000);
 
     /* Dynamic Color Extractor */
@@ -489,17 +472,13 @@
           const g = data[i + 1];
           const b = data[i + 2];
 
-          // Compute perceived brightness
           const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-          // Filter out near-pure blacks, near-whites, and dull grays
           if (brightness < 40 || brightness > 230) continue;
 
-          // Saturation measurement
           const max = Math.max(r, g, b);
           const min = Math.min(r, g, b);
           const sat = (max - min) / (max || 1);
 
-          // Boost vibrant colors
           const score = sat * 2.5 + (brightness > 80 && brightness < 200 ? 1 : 0);
           if (score > maxScore) {
             maxScore = score;
@@ -521,7 +500,6 @@
       extractVibrantColor(albumArt);
     });
 
-    /* Favicon Fallback Handler */
     const testImg = new Image();
     testImg.src = "https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png";
     testImg.onerror = () => {
@@ -529,7 +507,6 @@
       fallbackIcon.style.display = "block";
     };
 
-    /* Progress & Spotify Handling */
     function updateSpotifyProgress() {
       if (!currentSpotify || !currentSpotify.timestamps) return;
       const start = currentSpotify.timestamps.start;
