@@ -50,7 +50,6 @@
       display: none !important;
     }
 
-    /* Active Track View */
     .cover-art-wrap {
       position: relative;
       width: 100%;
@@ -114,7 +113,6 @@
       transition: width 0.25s linear;
     }
 
-    /* Idle View */
     .idle-icon-wrap {
       width: 100%;
       aspect-ratio: 1 / 1;
@@ -166,6 +164,16 @@
       margin-top: 2px;
       line-height: 1.2;
     }
+
+    /* Small status bar for debugging */
+    #status-log {
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.35);
+      font-family: monospace;
+      margin-top: 6px;
+      text-align: center;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -196,11 +204,14 @@
         </div>
       </div>
     </div>
+
+    <div id="status-log">Init...</div>
   </div>
 
   <script>
     const DISCORD_ID = "964500222870945873";
-    const REST_URL = `https://api.lanyard.rest/v1/users/${DISCORD_ID}`;
+    const PRIMARY_URL = `https://api.lanyard.rest/v1/users/${DISCORD_ID}`;
+    const PROXY_URL = `https://corsproxy.io/?url=${encodeURIComponent(PRIMARY_URL)}`;
 
     const idleView = document.getElementById("idle-view");
     const activeView = document.getElementById("active-view");
@@ -210,25 +221,14 @@
     const progressBar = document.getElementById("progress-bar");
     const faviconMask = document.getElementById("favicon-mask");
     const fallbackIcon = document.getElementById("fallback-icon");
+    const statusLog = document.getElementById("status-log");
 
     let currentSpotify = null;
     let progressTimer = null;
+    let useProxy = false;
 
-    const BLOCKED_TERMS = [
-      /\bnigger[s]?\b/gi,
-      /\bnigga[s]?\b/gi,
-      /\bfaggot[s]?\b/gi,
-      /\bky[s]\b/gi,
-      /\bretard[s]?\b/gi
-    ];
-
-    function filterTOSContent(str) {
-      if (!str) return "";
-      let clean = str;
-      BLOCKED_TERMS.forEach(pattern => {
-        clean = clean.replace(pattern, "****");
-      });
-      return clean;
+    function logStatus(msg) {
+      if (statusLog) statusLog.textContent = msg;
     }
 
     const testImg = new Image();
@@ -262,8 +262,8 @@
       if (albumArt.src !== spotifyData.album_art_url) {
         albumArt.src = spotifyData.album_art_url || "";
       }
-      trackName.textContent = filterTOSContent(spotifyData.song || "");
-      artistName.textContent = filterTOSContent(spotifyData.artist || "");
+      trackName.textContent = spotifyData.song || "";
+      artistName.textContent = spotifyData.artist || "";
 
       idleView.classList.add("hidden");
       activeView.classList.remove("hidden");
@@ -275,15 +275,31 @@
     }
 
     async function pollLanyard() {
+      const targetUrl = useProxy ? `${PROXY_URL}&_t=${Date.now()}` : `${PRIMARY_URL}?_t=${Date.now()}`;
       try {
-        const response = await fetch(REST_URL, { cache: "no-store" });
-        if (!response.ok) return;
+        const response = await fetch(targetUrl, {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        });
+
+        if (!response.ok) {
+          logStatus(`HTTP ${response.status} (${useProxy ? 'Proxy' : 'Direct'})`);
+          if (!useProxy && (response.status === 403 || response.status === 0)) {
+            useProxy = true; // Fallback to proxy if blocked by Cloudflare
+          }
+          return;
+        }
+
         const json = await response.json();
         if (json && json.data) {
+          logStatus(json.data.spotify ? `Playing: ${json.data.spotify.song.substring(0, 16)}...` : "Connected (No Track)");
           renderSpotify(json.data.spotify);
+        } else {
+          logStatus("No data payload");
         }
       } catch (err) {
-        console.error("Lanyard REST request failed:", err);
+        logStatus(`Err: ${err.message || "Failed"}`);
+        useProxy = !useProxy; // Toggle proxy fallback on fetch failure
       }
     }
 
