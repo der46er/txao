@@ -30,27 +30,27 @@
     .widget-container {
       width: 216px;
       padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
       background: rgba(12, 14, 18, 0.65);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      opacity: 0;
-      transform: translateY(-6px);
-      transition: opacity 0.35s ease, transform 0.35s ease;
-      pointer-events: none;
+      position: relative;
     }
 
-    .widget-container.active {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
+    .view-state {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: opacity 0.3s ease;
     }
 
+    .hidden {
+      display: none !important;
+    }
+
+    /* Active Track View */
     .cover-art-wrap {
       position: relative;
       width: 100%;
@@ -109,24 +109,94 @@
       height: 100%;
       width: 0%;
       background: #48cae4;
-      box-shadow: 0 0 8px rgba(72, 202, 228, 0.4);
+      box-shadow: 0 0 8px rgba(72, 202, 228, 0.45);
       border-radius: 999px;
       transition: width 0.25s linear;
+    }
+
+    /* Idle View */
+    .idle-icon-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      background: radial-gradient(circle at center, rgba(72, 202, 228, 0.08) 0%, rgba(255, 255, 255, 0.02) 75%);
+      border: 1px solid rgba(72, 202, 228, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .recolored-icon {
+      width: 58px;
+      height: 58px;
+      background-color: #48cae4;
+      -webkit-mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
+      mask: url('https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png') no-repeat center / contain;
+      filter: drop-shadow(0 0 8px rgba(72, 202, 228, 0.5));
+    }
+
+    /* Fallback if external image asset fails to load */
+    .fallback-svg {
+      display: none;
+      width: 54px;
+      height: 54px;
+      fill: #48cae4;
+      filter: drop-shadow(0 0 8px rgba(72, 202, 228, 0.5));
+    }
+
+    .idle-details {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      text-align: center;
+      padding-top: 2px;
+    }
+
+    .idle-title {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .idle-subtitle {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      font-weight: 400;
+      margin-top: 2px;
+      line-height: 1.2;
     }
   </style>
 </head>
 <body>
 
   <div class="widget-container" id="spotify-card">
-    <div class="cover-art-wrap">
-      <img id="album-art" class="cover-art" src="" alt="Album Artwork">
+    <!-- Idle Screen -->
+    <div id="idle-view" class="view-state">
+      <div class="idle-icon-wrap">
+        <div id="favicon-mask" class="recolored-icon"></div>
+        <svg id="fallback-icon" class="fallback-svg" viewBox="0 0 24 24">
+          <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+        </svg>
+      </div>
+      <div class="idle-details">
+        <div class="idle-title">Nothing Playing</div>
+        <div class="idle-subtitle">Nothing going on right now</div>
+      </div>
     </div>
 
-    <div class="track-details">
-      <div class="track-title" id="track-name">Track Title</div>
-      <div class="track-artist" id="artist-name">Artist</div>
-      <div class="progress-track">
-        <div class="progress-bar" id="progress-bar"></div>
+    <!-- Active Song View -->
+    <div id="active-view" class="view-state hidden">
+      <div class="cover-art-wrap">
+        <img id="album-art" class="cover-art" src="" alt="Album Artwork" crossorigin="anonymous">
+      </div>
+      <div class="track-details">
+        <div class="track-title" id="track-name">Track Title</div>
+        <div class="track-artist" id="artist-name">Artist</div>
+        <div class="progress-track">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -135,16 +205,45 @@
     const DISCORD_ID = "964500222870945873";
     const LANYARD_WS = "wss://api.lanyard.rest/socket";
 
-    const card = document.getElementById("spotify-card");
+    const idleView = document.getElementById("idle-view");
+    const activeView = document.getElementById("active-view");
     const albumArt = document.getElementById("album-art");
     const trackName = document.getElementById("track-name");
     const artistName = document.getElementById("artist-name");
     const progressBar = document.getElementById("progress-bar");
+    const faviconMask = document.getElementById("favicon-mask");
+    const fallbackIcon = document.getElementById("fallback-icon");
 
     let currentSpotify = null;
     let heartbeatInterval = null;
     let progressTimer = null;
     let socket = null;
+
+    // Direct stream moderation safety filter for high-risk words
+    const BLOCKED_TERMS = [
+      /\bnigger[s]?\b/gi,
+      /\bnigga[s]?\b/gi,
+      /\bfaggot[s]?\b/gi,
+      /\bky[s]\b/gi,
+      /\bretard[s]?\b/gi
+    ];
+
+    function filterTOSContent(str) {
+      if (!str) return "";
+      let clean = str;
+      BLOCKED_TERMS.forEach(pattern => {
+        clean = clean.replace(pattern, "****");
+      });
+      return clean;
+    }
+
+    // Verify external image accessibility
+    const testImg = new Image();
+    testImg.src = "https://raw.githubusercontent.com/der46er/website/refs/heads/main/assets/favicon.png";
+    testImg.onerror = () => {
+      faviconMask.style.display = "none";
+      fallbackIcon.style.display = "block";
+    };
 
     function updateProgressBar() {
       if (!currentSpotify || !currentSpotify.timestamps) return;
@@ -160,19 +259,22 @@
     function renderSpotify(spotifyData) {
       if (!spotifyData) {
         currentSpotify = null;
-        card.classList.remove("active");
         if (progressTimer) clearInterval(progressTimer);
+
+        activeView.classList.add("hidden");
+        idleView.classList.remove("hidden");
         return;
       }
 
       currentSpotify = spotifyData;
-      albumArt.src = spotifyData.album_art_url;
-      trackName.textContent = spotifyData.song;
-      artistName.textContent = spotifyData.artist;
+      albumArt.src = spotifyData.album_art_url || "";
+      trackName.textContent = filterTOSContent(spotifyData.song || "");
+      artistName.textContent = filterTOSContent(spotifyData.artist || "");
 
-      card.classList.add("active");
+      idleView.classList.add("hidden");
+      activeView.classList.remove("hidden");
+
       updateProgressBar();
-
       if (!progressTimer) {
         progressTimer = setInterval(updateProgressBar, 1000);
       }
