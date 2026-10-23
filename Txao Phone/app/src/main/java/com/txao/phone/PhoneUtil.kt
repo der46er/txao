@@ -44,4 +44,32 @@ object PhoneUtil {
         val s = seconds % 60
         return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
     }
+
+    /** Last digits of a number: equal keys mean "same number" regardless of country prefix or spacing. */
+    fun key(number: String): String = normalize(number).filter { it.isDigit() }.takeLast(9)
+
+    fun sameNumber(a: String, b: String): Boolean {
+        val ka = key(a)
+        return ka.isNotEmpty() && ka == key(b)
+    }
+
+    /** Alphabet section letter for the contacts list; everything non-alphabetic goes under `#`. */
+    fun section(name: String): Char = name.trim().firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' } ?: '#'
+
+    /** Short label such as "Mobile" for call-log rows is not stored; this gives a relative day bucket. */
+    fun dayLabel(now: Long, then: Long, dayMs: Long = 86_400_000L): String {
+        val d = (startOfDay(now) - startOfDay(then)) / dayMs
+        return when {
+            d <= 0L -> "Today"
+            d == 1L -> "Yesterday"
+            else -> "$d days ago"
+        }
+    }
+
+    private fun startOfDay(t: Long): Long {
+        val c = java.util.Calendar.getInstance().apply { timeInMillis = t }
+        c.set(java.util.Calendar.HOUR_OF_DAY, 0); c.set(java.util.Calendar.MINUTE, 0)
+        c.set(java.util.Calendar.SECOND, 0); c.set(java.util.Calendar.MILLISECOND, 0)
+        return c.timeInMillis
+    }
 }

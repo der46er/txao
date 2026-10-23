@@ -47,7 +47,7 @@ private fun CallScreen(onDone: () -> Unit) {
     @Suppress("UNUSED_EXPRESSION") tick
     val call = CallManager.primary()
     if (call == null) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        Box(Modifier.fillMaxSize().background(Color.Transparent))
         return
     }
     val number = CallManager.number(call)
@@ -57,10 +57,12 @@ private fun CallScreen(onDone: () -> Unit) {
     val ringing = state == Call.STATE_RINGING
 
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(24.dp),
+        Modifier.fillMaxSize().background(Color.Transparent).systemBarsPadding().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(32.dp))
+        Avatar(name ?: PhoneUtil.pretty(number), 112.dp)
+        Spacer(Modifier.height(16.dp))
         Text(name ?: PhoneUtil.pretty(number).ifEmpty { "Unknown" }, fontSize = 32.sp, fontWeight = FontWeight.Black)
         if (name != null) Text(PhoneUtil.pretty(number), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
@@ -72,14 +74,14 @@ private fun CallScreen(onDone: () -> Unit) {
             Call.STATE_DISCONNECTED -> "Call ended"
             else -> if (connected > 0) PhoneUtil.duration(((now - connected) / 1000).coerceAtLeast(0)) else "Connected"
         }
-        Text(label, color = Accent, fontSize = 18.sp)
+        Text(label, color = Mint, fontSize = 18.sp)
 
         Spacer(Modifier.weight(1f))
 
         if (ringing) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 RoundButton(Icons.Filled.CallEnd, Danger, "Decline") { call.reject(false, null) }
-                RoundButton(Icons.Filled.Call, Accent, "Answer") { call.answer(VideoProfile.STATE_AUDIO_ONLY) }
+                RoundButton(Icons.Filled.Call, Mint, "Answer", OnMint) { call.answer(VideoProfile.STATE_AUDIO_ONLY) }
             }
         } else {
             if (keypad) {
@@ -104,20 +106,20 @@ private fun CallScreen(onDone: () -> Unit) {
 }
 
 @Composable
-private fun RoundButton(icon: ImageVector, color: Color, desc: String, onClick: () -> Unit) {
+private fun RoundButton(icon: ImageVector, color: Color, desc: String, iconTint: Color = Color.White, onClick: () -> Unit) {
     Box(
         Modifier.size(72.dp).clip(CircleShape).background(color).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, desc, tint = Color.White, modifier = Modifier.size(32.dp)) }
+    ) { Icon(icon, desc, tint = iconTint, modifier = Modifier.size(32.dp)) }
 }
 
 @Composable
 private fun Toggle(icon: ImageVector, label: String, on: Boolean, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable(onClick = onClick).padding(8.dp)) {
         Box(
-            Modifier.size(56.dp).clip(CircleShape).background(if (on) Color.White else Glass),
+            Modifier.size(56.dp).clip(CircleShape).background(if (on) Lavender else Color(0x1FFFFFFF)),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, label, tint = if (on) Color.Black else Color.White) }
+        ) { Icon(icon, label, tint = if (on) OnLavender else Color.White) }
         Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -128,7 +130,7 @@ private fun DtmfPad(onKey: (Char) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         for (r in rows) Row {
             for (k in r) {
-                Box(Modifier.padding(6.dp).size(64.dp).clip(CircleShape).background(Glass).clickable { onKey(k) }, contentAlignment = Alignment.Center) {
+                Box(Modifier.padding(6.dp).size(64.dp).clip(CircleShape).background(Color(0x1FFFFFFF)).clickable { onKey(k) }, contentAlignment = Alignment.Center) {
                     Text(k.toString(), fontSize = 24.sp)
                 }
             }

@@ -1,4 +1,9 @@
 {
-  "id": "phone", "name": "Txao Phone", "package": "com.txao.phone", "status": "planned",
-  "description": "Dialer, recent calls and contacts.", "accent": "#10ac84"
+  "id": "phone",
+  "name": "Txao Phone",
+  "package": "com.txao.phone",
+  "status": "planned",
+  "description": "Dialer with favorites, recents, contacts, call details and blocking.",
+  "accent": "#10ac84",
+  "icon": "icons/phone.svg"
 }
