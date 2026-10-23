@@ -35,34 +35,38 @@
                 radial-gradient(72vmax 72vmax at 17% 78%, rgba(183,156,255,.55), transparent 70%),
                 radial-gradient(59vmax 59vmax at 93% 85%, rgba(215,166,198,.40), transparent 70%);
         }
-        .wrap { width: 100%; padding: 0 clamp(16px, 5vw, 96px); }
-        nav { padding: 28px 0; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; font-size: 15px; }
+        .wrap { width: 100%; max-width: 1680px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 64px); }
+        nav { padding: 24px 0; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; font-size: 15px; }
 
-                .hero { text-align: center; padding: clamp(40px, 9vh, 110px) 0 clamp(32px, 6vh, 72px); }
-                .hero h1 { font-size: clamp(40px, 8vw, 112px); line-height: 1.02; margin: 0 0 20px; font-weight: 800; letter-spacing: -.035em; }
-                .hero p { color: var(--muted); font-size: clamp(17px, 2.2vw, 26px); max-width: 780px; margin: 0 auto; }
+        .hero { text-align: center; padding: clamp(24px, 6vh, 72px) 0 clamp(24px, 5vh, 56px); }
+        .hero h1 { font-size: clamp(34px, 5.2vw, 76px); line-height: 1.04; margin: 0 0 16px; font-weight: 800; letter-spacing: -.03em; }
+        .hero p { color: var(--muted); font-size: clamp(16px, 1.5vw, 21px); max-width: 640px; margin: 0 auto; }
 
         .glass {
             background: linear-gradient(180deg, var(--glass-hi), var(--glass-lo));
             border: 1px solid var(--line); border-radius: var(--r-xl);
             backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%);
         }
-        /* Proton-style row of app icons with the name underneath */
-                .suite { padding: clamp(28px, 5vw, 64px) clamp(16px, 4vw, 56px); margin-bottom: 20px; }
-                .icons { display: grid; grid-template-columns: repeat(auto-fit, minmax(clamp(130px, 17vw, 210px), 1fr)); gap: clamp(28px, 4vw, 56px) clamp(12px, 2vw, 28px); }
-                .app { text-align: center; color: inherit; text-decoration: none; display: block; cursor: pointer; }
-                .app .ico { width: clamp(104px, 13vw, 168px); height: auto; aspect-ratio: 1; margin: 0 auto 16px; display: block; border-radius: 28%;
-                    transition: transform .2s, box-shadow .2s; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+        /* Proton-style row of app icons with the name underneath: one row on desktop, wraps on small screens */
+        .suite { padding: clamp(24px, 3vw, 44px) clamp(12px, 2vw, 32px); margin-bottom: 20px; }
+        .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 28px 12px; }
+        @media (min-width: 1000px) { .icons { grid-template-columns: repeat(var(--n, 9), minmax(0, 1fr)); } }
+        .app { text-align: center; color: inherit; text-decoration: none; display: block; cursor: pointer; min-width: 0; }
+        .app .ico { width: min(100%, 124px); aspect-ratio: 1; margin: 0 auto 12px; display: block; overflow: hidden; border-radius: 28%;
+                    transition: transform .2s, box-shadow .2s; box-shadow: 0 6px 22px rgba(0,0,0,.35); }
+        .app .ico img { width: 100%; height: 100%; display: block; }
+        /* Our SVGs keep the glyph inside the Android safe zone; scale it up so it fills the tile like a launcher icon. */
+        .app .ico.fill img { transform: scale(1.5); }
         .app:hover .ico, .app:focus-visible .ico { transform: translateY(-4px) scale(1.05); box-shadow: 0 12px 30px rgba(183,156,255,.35); }
         .app:focus-visible { outline: 2px solid var(--accent-lo); outline-offset: 6px; border-radius: 20px; }
-        .app .name { font-size: clamp(16px, 1.6vw, 22px); font-weight: 600; }
-        .app .sub { font-size: clamp(13px, 1.2vw, 16px); color: var(--muted); margin-top: 2px; }
+        .app .name { font-size: clamp(13px, 1.1vw, 16px); font-weight: 600; line-height: 1.25; }
+        .app .sub { font-size: clamp(12px, 1vw, 14px); color: var(--muted); margin-top: 2px; }
         .app.soon { cursor: default; }
         .app.soon .ico { filter: saturate(.6); opacity: .65; }
         .app.soon:hover .ico { transform: none; box-shadow: 0 6px 22px rgba(0,0,0,.35); }
 
-        .hint { text-align: center; color: var(--muted); font-size: 16px; margin: 0 0 48px; }
-        h2 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 16px; }
+        .hint { text-align: center; color: var(--muted); font-size: 15px; margin: 0 0 40px; }
+        h2 { font-size: 24px; letter-spacing: -.02em; margin: 0 0 16px; }
         .steps { padding: clamp(24px, 3vw, 44px); margin-bottom: 24px; }
         .steps ol { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.8; }
         .steps li b { color: var(--text); }
@@ -70,7 +74,6 @@
         footer a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
         footer a:hover { color: var(--accent-lo); }
         #error { color: #ff9a9a; display: none; text-align: center; }
-        @media (max-width: 480px) { .suite { padding: 24px 8px; } .icons { grid-template-columns: repeat(2, 1fr); } }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
     </style>
 </head>
@@ -114,9 +117,10 @@
             <circle cx="54" cy="54" r="24" fill="url(#k)"/>
             <text x="54" y="63" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="28" fill="#2e1b5c">${esc(short(a.name).charAt(0).toUpperCase())}</text></svg>`);
         fetch('apps.json').then(r => r.json()).then(({ apps }) => {
-            document.getElementById('icons').innerHTML = apps.map(a => {
+            const grid = document.getElementById('icons'); grid.style.setProperty('--n', apps.length);
+            grid.innerHTML = apps.map(a => {
                 const ready = a.status === 'available';
-                const img = `<img class="ico" src="${esc(a.icon || fallbackIcon(a))}" alt="" width="168" height="168">`;
+                const img = `<span class="ico${a.icon ? ' fill' : ''}"><img src="${esc(a.icon || fallbackIcon(a))}" alt="" width="124" height="124"></span>`;
                 const label = `<div class="name">${esc(short(a.name))}</div><div class="sub">${ready ? 'v' + esc(a.version) : 'Soon'}</div>`;
                 return ready
                     ? `<a class="app" href="${esc(a.file)}" download="${esc(a.file.split('/').pop())}" type="application/vnd.android.package-archive" title="Download ${esc(a.name)}">${img}${label}</a>`
