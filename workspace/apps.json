@@ -9,6 +9,7 @@
     { "id": "gallery", "name": "Txao Gallery", "package": "com.txao.gallery", "status": "planned", "description": "Photo and video gallery." },
     { "id": "calendar", "name": "Txao Calendar", "package": "com.txao.calendar", "status": "planned", "description": "Calendar and events." },
     { "id": "authenticator", "name": "Txao Authenticator", "package": "com.txao.authenticator", "status": "planned", "description": "Two-factor authentication codes (TOTP)." },
+    { "id": "music", "name": "Txao Music Player", "package": "com.txao.music", "status": "planned", "description": "Offline music player with background playback and sleep timer." },
     { "id": "sms", "name": "Txao SMS", "package": "com.txao.sms", "status": "planned", "description": "SMS messaging." }
   ]
 }
