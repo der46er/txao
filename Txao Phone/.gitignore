@@ -1,0 +1,6 @@
+signing/
+build/
+.gradle/
+local.properties
+.kotlin/
+.idea/

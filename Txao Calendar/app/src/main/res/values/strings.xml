@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Txao Calendar</string>
+    <string name="shortcut_event">New event</string>
+</resources>

@@ -55,12 +55,12 @@
       "accent": "#ff6b9d"
     },
     {
-      "id": "music",
-      "name": "Txao Music Player",
-      "package": "com.txao.music",
+      "id": "phone",
+      "name": "Txao Phone",
+      "package": "com.txao.phone",
       "status": "planned",
-      "description": "Offline music player with background playback and sleep timer.",
-      "accent": "#f368e0"
+      "description": "Dialer, recent calls and contacts.",
+      "accent": "#10ac84"
     },
     {
       "id": "sms",

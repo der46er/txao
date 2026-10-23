@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.TxaoPhone" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0D0D0D</item>
+        <item name="android:statusBarColor">#0D0D0D</item>
+        <item name="android:navigationBarColor">#0D0D0D</item>
+    </style>
+</resources>
