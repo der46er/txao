@@ -55,6 +55,14 @@
       "accent": "#ff6b9d"
     },
     {
+      "id": "phone",
+      "name": "Txao Phone",
+      "package": "com.txao.phone",
+      "status": "planned",
+      "description": "Dialer, recent calls and contacts.",
+      "accent": "#10ac84"
+    },
+    {
       "id": "sms",
       "name": "Txao SMS",
       "package": "com.txao.sms",
