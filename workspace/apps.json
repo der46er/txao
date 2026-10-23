@@ -8,7 +8,7 @@
       "status": "available",
       "description": "Glass-style calculator. Long-press = to send the result to Txao Notes.",
       "file": "downloads/txao-calculator-1.4.2.apk",
-      "accent": "#ff9f43"
+      "icon": "icons/calculator.svg"
     },
     {
       "id": "files",
@@ -18,7 +18,7 @@
       "status": "available",
       "description": "File manager.",
       "file": "downloads/txao-files-1.1.5.apk",
-      "accent": "#54a0ff"
+      "icon": "icons/files.svg"
     },
     {
       "id": "notes",
@@ -28,7 +28,7 @@
       "status": "available",
       "description": "Notes with checklists, labels, reminders and optional end-to-end encrypted sync to your own server.",
       "file": "downloads/txao-notes-1.0.2.apk",
-      "accent": "#feca57"
+      "icon": "icons/notes.svg"
     },
     {
       "id": "authenticator",
