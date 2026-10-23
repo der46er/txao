@@ -1,0 +1,4 @@
+{
+  "id": "phone", "name": "Txao Phone", "package": "com.txao.phone", "status": "planned",
+  "description": "Dialer, recent calls and contacts.", "accent": "#10ac84"
+}

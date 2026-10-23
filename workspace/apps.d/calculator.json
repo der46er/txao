@@ -1,0 +1,10 @@
+{
+  "id": "calculator",
+  "name": "Txao Calculator",
+  "package": "com.txao.calculator",
+  "version": "1.4.2",
+  "status": "available",
+  "description": "Glass-style calculator. Long-press = to send the result to Txao Notes.",
+  "file": "downloads/txao-calculator-1.4.2.apk",
+  "accent": "#ff9f43"
+}
