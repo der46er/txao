@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TXAO Workspace</title>
+    <meta name="description" content="Download the TXAO Android apps.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #0D0D0D; color: #fff; margin: 0; }
+        .glass-box { background: rgba(18,18,18,0.88); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+    </style>
+</head>
+<body class="min-h-screen selection:bg-white/10">
+    <main class="w-full max-w-lg mx-auto px-4 py-8 space-y-4">
+        <div class="glass-box rounded-2xl p-5">
+            <h1 class="text-lg font-black italic uppercase tracking-wider">TXAO Workspace</h1>
+            <p class="text-sm text-zinc-400 mt-1">Android apps. Download the APK and open it on your phone to install (you may need to allow installs from your browser).</p>
+        </div>
+        <div id="apps" class="space-y-4"></div>
+        <p id="error" class="text-sm text-red-400 hidden">Could not load the app list.</p>
+    </main>
+    <script>
+        // Apps are listed in apps.json: add an entry there, no HTML changes needed.
+        const list = document.getElementById('apps');
+        const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        fetch('apps.json').then(r => r.json()).then(({ apps }) => {
+            list.innerHTML = apps.map(a => {
+                const ready = a.status === 'available';
+                const action = ready
+                    ? `<a href="${esc(a.file)}" download class="mt-4 w-full flex items-center justify-center px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black hover:bg-zinc-200 transition active:scale-[0.98]">Download v${esc(a.version)}</a>`
+                    : `<div class="mt-4 w-full text-center px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-white/5 text-zinc-500">Coming soon</div>`;
+                return `<div class="glass-box rounded-2xl p-5">
+                    <h2 class="font-black">${esc(a.name)}</h2>
+                    <p class="text-xs text-zinc-500">${esc(a.package)}</p>
+                    <p class="text-sm text-zinc-300 mt-2">${esc(a.description)}</p>${action}</div>`;
+            }).join('');
+        }).catch(() => document.getElementById('error').classList.remove('hidden'));
+    </script>
+</body>
+</html>
