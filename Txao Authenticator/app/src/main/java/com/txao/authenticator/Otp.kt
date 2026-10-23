@@ -4,7 +4,8 @@ import java.nio.ByteBuffer
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-enum class OtpType { TOTP, HOTP }
+/** STEAM is the 5-character, SHA-1/30 s variant used by Steam Guard. */
+enum class OtpType { TOTP, HOTP, STEAM }
 
 enum class OtpAlgorithm(val jca: String, val uriName: String) {
     SHA1("HmacSHA1", "SHA1"),
@@ -48,9 +49,29 @@ object Otp {
         return (((p - Math.floorMod(unixMillis, p)) + 999) / 1000).toInt()
     }
 
+    private const val STEAM_ALPHABET = "23456789BCDFGHJKMNPQRTVWXY"
+
+    /** Steam Guard code: the usual HOTP truncation, written as 5 characters of a 26-symbol alphabet. */
+    fun steam(secret: ByteArray, unixSeconds: Long): String {
+        val mac = Mac.getInstance("HmacSHA1")
+        mac.init(SecretKeySpec(secret, "HmacSHA1"))
+        val hash = mac.doFinal(ByteBuffer.allocate(8).putLong(timeStep(unixSeconds, 30)).array())
+        val offset = hash[hash.size - 1].toInt() and 0x0F
+        var v = ((hash[offset].toInt() and 0x7F) shl 24) or
+            ((hash[offset + 1].toInt() and 0xFF) shl 16) or
+            ((hash[offset + 2].toInt() and 0xFF) shl 8) or
+            (hash[offset + 3].toInt() and 0xFF)
+        val sb = StringBuilder()
+        repeat(5) {
+            sb.append(STEAM_ALPHABET[v % STEAM_ALPHABET.length])
+            v /= STEAM_ALPHABET.length
+        }
+        return sb.toString()
+    }
+
     /** Groups a code for readability: "123456" -> "123 456", "12345678" -> "1234 5678". */
     fun format(code: String): String {
-        val first = (code.length + 1) / 2
+        val first = code.length / 2
         return if (code.length < 6) code else code.substring(0, first) + " " + code.substring(first)
     }
 }

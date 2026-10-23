@@ -27,6 +27,7 @@ data class Account(
         return when (type) {
             OtpType.TOTP -> Otp.totp(key, nowMillis / 1000, period, digits, algorithm)
             OtpType.HOTP -> Otp.hotp(key, counter, digits, algorithm)
+            OtpType.STEAM -> Otp.steam(key, nowMillis / 1000)
         }
     }
 
@@ -35,8 +36,8 @@ data class Account(
         val path = if (issuer.isBlank()) enc(label) else "${enc(issuer)}:${enc(label)}"
         val sb = StringBuilder("otpauth://${type.name.lowercase()}/$path?secret=$secret")
         if (issuer.isNotBlank()) sb.append("&issuer=").append(enc(issuer))
-        if (algorithm != OtpAlgorithm.SHA1) sb.append("&algorithm=").append(algorithm.uriName)
-        if (digits != 6) sb.append("&digits=").append(digits)
+        if (type != OtpType.STEAM && algorithm != OtpAlgorithm.SHA1) sb.append("&algorithm=").append(algorithm.uriName)
+        if (type != OtpType.STEAM && digits != 6) sb.append("&digits=").append(digits)
         if (type == OtpType.TOTP && period != 30) sb.append("&period=").append(period)
         if (type == OtpType.HOTP) sb.append("&counter=").append(counter)
         return sb.toString()
@@ -74,6 +75,12 @@ data class Account(
          */
         fun fromUri(text: String): Account? {
             val s = text.trim()
+            // Other apps export Steam accounts as the bare form steam://SECRET.
+            if (s.startsWith("steam://", ignoreCase = true)) {
+                val secret = s.substring("steam://".length).filter { it != ' ' && it != '-' }.trimEnd('=').uppercase()
+                if (Base32.decode(secret) == null) return null
+                return Account(issuer = "Steam", label = "", secret = secret, type = OtpType.STEAM, digits = 5)
+            }
             if (!s.startsWith("otpauth://", ignoreCase = true)) return null
             val rest = s.substring("otpauth://".length)
             val slash = rest.indexOf('/')
@@ -81,6 +88,7 @@ data class Account(
             val type = when (rest.substring(0, slash).lowercase()) {
                 "totp" -> OtpType.TOTP
                 "hotp" -> OtpType.HOTP
+                "steam" -> OtpType.STEAM
                 else -> return null
             }
             val afterType = rest.substring(slash + 1).substringBefore('#')
@@ -103,10 +111,10 @@ data class Account(
 
             val secret = params["secret"]?.filter { it != ' ' && it != '-' }?.trimEnd('=')?.uppercase() ?: return null
             if (Base32.decode(secret) == null) return null
-            val algorithm = params["algorithm"]?.let { OtpAlgorithm.fromUri(it) ?: return null } ?: OtpAlgorithm.SHA1
-            val digits = params["digits"]?.toIntOrNull() ?: 6
-            if (digits !in 6..8) return null
-            val period = params["period"]?.toIntOrNull() ?: 30
+            val algorithm = if (type == OtpType.STEAM) OtpAlgorithm.SHA1 else params["algorithm"]?.let { OtpAlgorithm.fromUri(it) ?: return null } ?: OtpAlgorithm.SHA1
+            val digits = if (type == OtpType.STEAM) 5 else params["digits"]?.toIntOrNull() ?: 6
+            if (type != OtpType.STEAM && digits !in 6..8) return null
+            val period = if (type == OtpType.STEAM) 30 else params["period"]?.toIntOrNull() ?: 30
             if (period <= 0) return null
             val counter = params["counter"]?.toLongOrNull() ?: 0L
             if (type == OtpType.HOTP && counter < 0) return null
