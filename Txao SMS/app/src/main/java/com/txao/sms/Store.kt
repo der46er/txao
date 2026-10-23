@@ -23,6 +23,19 @@ class Store(context: Context) {
         get() = readStrings("pinned").mapNotNull { it.toLongOrNull() }.toSet()
         set(v) = writeStrings("pinned", v.map { it.toString() })
 
+    var archived: Set<Long>
+        get() = readStrings("archived").mapNotNull { it.toLongOrNull() }.toSet()
+        set(v) = writeStrings("archived", v.map { it.toString() })
+
+    var muted: Set<Long>
+        get() = readStrings("muted").mapNotNull { it.toLongOrNull() }.toSet()
+        set(v) = writeStrings("muted", v.map { it.toString() })
+
+    /** Ids of starred messages. */
+    var starred: Set<Long>
+        get() = readStrings("starred").mapNotNull { it.toLongOrNull() }.toSet()
+        set(v) = writeStrings("starred", v.map { it.toString() })
+
     var scheduled: List<Scheduled>
         get() = Scheduled.listFromJson(p.getString("scheduled", null)).sortedBy { it.at }
         set(v) = p.edit().putString("scheduled", Scheduled.listToJson(v)).apply()

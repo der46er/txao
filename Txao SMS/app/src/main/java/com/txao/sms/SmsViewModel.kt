@@ -23,6 +23,8 @@ class SmsViewModel(app: Application) : AndroidViewModel(app) {
     val results = MutableStateFlow<List<Msg>>(emptyList())
     val blocked = MutableStateFlow(store.blocked)
     val scheduled = MutableStateFlow(store.scheduled)
+    val starredIds = MutableStateFlow(store.starred)
+    val starredMessages = MutableStateFlow<List<Msg>>(emptyList())
 
     private var openThread: Long? = null
 
@@ -50,6 +52,7 @@ class SmsViewModel(app: Application) : AndroidViewModel(app) {
             if (openThread != null) messages.value = msgs
             blocked.value = store.blocked
             scheduled.value = store.scheduled
+            starredIds.value = store.starred
         }
     }
 
@@ -104,6 +107,32 @@ class SmsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteMessage(id: Long) {
         viewModelScope.launch(Dispatchers.IO) { repo.deleteMessage(id); refresh() }
+    }
+
+    fun archive(ids: Set<Long>, archive: Boolean) {
+        store.archived = if (archive) store.archived + ids else store.archived - ids
+        refresh()
+    }
+
+    fun setMuted(id: Long, mute: Boolean) {
+        store.muted = if (mute) store.muted + id else store.muted - id
+        refresh()
+    }
+
+    fun toggleStar(ids: Set<Long>) {
+        val cur = store.starred
+        store.starred = if (ids.all { it in cur }) cur - ids else cur + ids
+        starredIds.value = store.starred
+    }
+
+    fun loadStarred() {
+        viewModelScope.launch {
+            starredMessages.value = withContext(Dispatchers.IO) { runCatching { repo.messagesByIds(store.starred) }.getOrDefault(emptyList()) }
+        }
+    }
+
+    fun deleteMessages(ids: Set<Long>) {
+        viewModelScope.launch(Dispatchers.IO) { ids.forEach { repo.deleteMessage(it) }; store.starred = store.starred - ids; refresh() }
     }
 
     fun togglePin(id: Long) {
