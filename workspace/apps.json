@@ -1,14 +1,66 @@
 {
   "apps": [
-    { "id": "calculator", "name": "Txao Calculator", "package": "com.txao.calculator", "version": "1.4.2", "status": "available",
-      "description": "Glass-style calculator. Long-press = to send the result to Txao Notes.", "file": "downloads/txao-calculator-1.4.2.apk" },
-    { "id": "notes", "name": "Txao Notes", "package": "com.txao.notes", "version": "1.0.2", "status": "available",
-      "description": "Notes with checklists, labels, reminders and optional end-to-end encrypted sync to your own server.", "file": "downloads/txao-notes-1.0.2.apk" },
-    { "id": "files", "name": "Txao Files", "package": "com.txao.files", "version": "1.1.5", "status": "available",
-      "description": "File manager.", "file": "downloads/txao-files-1.1.5.apk" },
-    { "id": "gallery", "name": "Txao Gallery", "package": "com.txao.gallery", "status": "planned", "description": "Photo and video gallery." },
-    { "id": "calendar", "name": "Txao Calendar", "package": "com.txao.calendar", "status": "planned", "description": "Calendar and events." },
-    { "id": "authenticator", "name": "Txao Authenticator", "package": "com.txao.authenticator", "status": "planned", "description": "Two-factor authentication codes (TOTP)." },
-    { "id": "sms", "name": "Txao SMS", "package": "com.txao.sms", "status": "planned", "description": "SMS messaging." }
+    {
+      "id": "calculator",
+      "name": "Txao Calculator",
+      "package": "com.txao.calculator",
+      "version": "1.4.2",
+      "status": "available",
+      "description": "Glass-style calculator. Long-press = to send the result to Txao Notes.",
+      "file": "downloads/txao-calculator-1.4.2.apk",
+      "accent": "#ff9f43"
+    },
+    {
+      "id": "notes",
+      "name": "Txao Notes",
+      "package": "com.txao.notes",
+      "version": "1.0.2",
+      "status": "available",
+      "description": "Notes with checklists, labels, reminders and optional end-to-end encrypted sync to your own server.",
+      "file": "downloads/txao-notes-1.0.2.apk",
+      "accent": "#feca57"
+    },
+    {
+      "id": "files",
+      "name": "Txao Files",
+      "package": "com.txao.files",
+      "version": "1.1.5",
+      "status": "available",
+      "description": "File manager.",
+      "file": "downloads/txao-files-1.1.5.apk",
+      "accent": "#54a0ff"
+    },
+    {
+      "id": "gallery",
+      "name": "Txao Gallery",
+      "package": "com.txao.gallery",
+      "status": "planned",
+      "description": "Photo and video gallery.",
+      "accent": "#ff6b9d"
+    },
+    {
+      "id": "calendar",
+      "name": "Txao Calendar",
+      "package": "com.txao.calendar",
+      "status": "planned",
+      "description": "Calendar and events.",
+      "accent": "#5f7cff"
+    },
+    {
+      "id": "authenticator",
+      "name": "Txao Authenticator",
+      "package": "com.txao.authenticator",
+      "status": "planned",
+      "description": "Two-factor authentication codes (TOTP).",
+      "accent": "#2ed8a3"
+    },
+    {
+      "id": "sms",
+      "name": "Txao SMS",
+      "package": "com.txao.sms",
+      "status": "planned",
+      "description": "SMS messaging.",
+      "accent": "#a78bfa"
+    }
   ]
 }
