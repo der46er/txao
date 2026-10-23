@@ -44,4 +44,4 @@ Each app has a README (what it is, build command `gradle :app:assembleRelease`, 
 The page renders from `apps.json`; no HTML edits needed. Planned apps are already listed as "Coming soon".
 
 ## Branding
-Dark `#0D0D0D` background, translucent "glass" cards (`rgba(18,18,18,.88)`, 1px `rgba(255,255,255,.12)` border, rounded), Inter font, white primary buttons, uppercase black-weight headings.
+Dark `#0B0E14` background (matches the apps' `txao_bg`), translucent glass cards with HyperOS-style large corners (24-32px), Material 3 tonal buttons (pill, light-blue primary), per-app accent colour (`accent` in `apps.json`), soft colour glows. Download page layout follows a Proton-style product grid.
