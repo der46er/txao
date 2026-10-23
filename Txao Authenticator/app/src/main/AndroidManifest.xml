@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- No permissions at all: no network, no camera. Codes are computed on-device. -->
+    <!-- No network access at all: codes are computed on the device. -->
+    <!-- Camera: only to scan QR setup codes, asked when the scanner opens. Nothing is recorded or sent. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:allowBackup="false"
