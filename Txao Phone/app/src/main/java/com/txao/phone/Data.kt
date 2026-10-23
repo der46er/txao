@@ -1,53 +1,83 @@
 package com.txao.phone
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.provider.BlockedNumberContract
 import android.provider.CallLog
 import android.provider.ContactsContract
 
-data class Contact(val id: Long, val name: String, val number: String)
+data class Contact(val id: Long, val name: String, val number: String, val starred: Boolean) {
+    val lookupUri: Uri get() = ContactsContract.Contacts.getLookupUri(id, null) ?: Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, id.toString())
+}
 
 data class CallEntry(val id: Long, val number: String, val name: String?, val type: Int, val date: Long, val duration: Long) {
     val missed get() = type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE
     val outgoing get() = type == CallLog.Calls.OUTGOING_TYPE
+    val label get() = name?.takeIf { it.isNotBlank() } ?: PhoneUtil.pretty(number).ifEmpty { "Unknown" }
+}
+
+/** Consecutive calls with the same person collapsed into one row. */
+data class CallGroup(val calls: List<CallEntry>) {
+    val first get() = calls.first()
+    val count get() = calls.size
 }
 
 object Data {
     fun contacts(ctx: Context): List<Contact> {
         val out = ArrayList<Contact>()
-        val p = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-        val cols = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-        )
-        ctx.contentResolver.query(p, cols, null, null, "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE")?.use { c ->
-            while (c.moveToNext()) {
-                out += Contact(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty())
+        val p = ContactsContract.CommonDataKinds.Phone
+        val cols = arrayOf(p.CONTACT_ID, p.DISPLAY_NAME, p.NUMBER, p.STARRED)
+        try {
+            ctx.contentResolver.query(p.CONTENT_URI, cols, null, null, "${p.DISPLAY_NAME} COLLATE NOCASE")?.use { c ->
+                while (c.moveToNext()) out += Contact(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getInt(3) == 1)
             }
+        } catch (_: SecurityException) {
+        }
+        // One row per contact and distinct number.
+        return out.distinctBy { it.id to PhoneUtil.normalize(it.number) }
+    }
+
+    fun recents(ctx: Context, limit: Int = 400): List<CallEntry> {
+        val out = ArrayList<CallEntry>()
+        val cols = arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION)
+        try {
+            ctx.contentResolver.query(CallLog.Calls.CONTENT_URI, cols, null, null, "${CallLog.Calls.DATE} DESC")?.use { c ->
+                while (c.moveToNext() && out.size < limit) {
+                    out += CallEntry(c.getLong(0), c.getString(1).orEmpty(), c.getString(2), c.getInt(3), c.getLong(4), c.getLong(5))
+                }
+            }
+        } catch (_: SecurityException) {
         }
         return out
     }
 
-    fun recents(ctx: Context, limit: Int = 300): List<CallEntry> {
-        val out = ArrayList<CallEntry>()
-        val cols = arrayOf(
-            CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME,
-            CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION,
-        )
-        ctx.contentResolver.query(CallLog.Calls.CONTENT_URI, cols, null, null, "${CallLog.Calls.DATE} DESC")?.use { c ->
-            while (c.moveToNext() && out.size < limit) {
-                out += CallEntry(c.getLong(0), c.getString(1).orEmpty(), c.getString(2), c.getInt(3), c.getLong(4), c.getLong(5))
-            }
+    fun group(calls: List<CallEntry>): List<CallGroup> {
+        val out = ArrayList<MutableList<CallEntry>>()
+        for (c in calls) {
+            val last = out.lastOrNull()
+            if (last != null && PhoneUtil.sameNumber(last.first().number, c.number)) last += c else out += mutableListOf(c)
         }
-        return out
+        return out.map(::CallGroup)
+    }
+
+    fun historyFor(ctx: Context, number: String): List<CallEntry> =
+        recents(ctx, 2000).filter { PhoneUtil.sameNumber(it.number, number) }
+
+    fun deleteHistory(ctx: Context, ids: List<Long>) {
+        for (id in ids) ctx.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID}=?", arrayOf(id.toString()))
     }
 
     fun clearRecents(ctx: Context) {
         ctx.contentResolver.delete(CallLog.Calls.CONTENT_URI, null, null)
     }
 
-    /** Name for a number from the contacts, or null. */
+    /** Numbers called most often, for the "Frequent" row in Favorites. */
+    fun frequent(calls: List<CallEntry>, exclude: Set<String>, max: Int = 8): List<CallEntry> =
+        calls.filter { it.outgoing && !PhoneUtil.normalize(it.number).let(exclude::contains) }
+            .groupBy { PhoneUtil.key(it.number) }.values
+            .sortedByDescending { it.size }.take(max).map { it.first() }
+
     fun lookupName(ctx: Context, number: String): String? {
         if (number.isEmpty()) return null
         return try {
@@ -58,5 +88,33 @@ object Data {
         } catch (_: SecurityException) {
             null
         }
+    }
+
+    // Blocking works once Txao Phone is the default phone app.
+    fun canBlock(ctx: Context): Boolean = try { BlockedNumberContract.canCurrentUserBlockNumbers(ctx) } catch (_: Exception) { false }
+
+    fun isBlocked(ctx: Context, number: String): Boolean = try { BlockedNumberContract.isBlocked(ctx, number) } catch (_: Exception) { false }
+
+    fun block(ctx: Context, number: String): Boolean = try {
+        ctx.contentResolver.insert(
+            BlockedNumberContract.BlockedNumbers.CONTENT_URI,
+            ContentValues().apply { put(BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER, number) },
+        ) != null
+    } catch (_: Exception) { false }
+
+    fun unblock(ctx: Context, number: String): Boolean = try {
+        BlockedNumberContract.unblock(ctx, number) > 0
+    } catch (_: Exception) { false }
+
+    fun blockedNumbers(ctx: Context): List<String> {
+        val out = ArrayList<String>()
+        try {
+            ctx.contentResolver.query(
+                BlockedNumberContract.BlockedNumbers.CONTENT_URI,
+                arrayOf(BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER), null, null, null,
+            )?.use { while (it.moveToNext()) out += it.getString(0).orEmpty() }
+        } catch (_: Exception) {
+        }
+        return out
     }
 }

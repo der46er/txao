@@ -1,12 +1,15 @@
 # Txao Phone
 
-Dialer, recent calls and contacts for Android, with its own in-call screen. No analytics, no ads, no accounts, no network access.
+Dialer for Android in the TXAO glass look, with the layout and features people know from the stock Google dialer. No analytics, no ads, no accounts, no network access.
 
-- Keypad with contact search (by number or by typing the name on the keypad)
-- Recents from the system call log, tap to call back, clear all
-- Contacts list with search
-- In-call screen: answer/decline, mute, speaker, hold, keypad tones, call duration
-- Can be set as the default phone app
+- Favorites (starred contacts) and Frequent (most called)
+- Recents grouped by caller, with an All / Missed filter, day headings and a call-details page (history, call, message, block, add contact, delete history)
+- Contacts in alphabetical sections, create new contact
+- Search across contacts and recent calls, or call a typed number
+- Keypad with contact suggestions by number or name (T9)
+- Voicemail tab that dials your carrier's voicemail
+- Blocked numbers: callers on the block list are rejected before they ring (needs Txao Phone as the default phone app)
+- In-call screen: answer/decline, mute, speaker, hold, keypad tones, call timer
 
 Written from scratch for TXAO; see `workspace/CONVENTIONS.md`.
 

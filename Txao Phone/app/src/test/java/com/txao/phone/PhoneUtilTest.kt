@@ -32,4 +32,28 @@ class PhoneUtilTest {
         assertEquals("+431234567", PhoneUtil.pretty("+43 1234567"))
         assertEquals("0664 123 4567", PhoneUtil.pretty("06641234567"))
     }
+
+    @Test fun sameNumberIgnoresPrefixAndSpacing() {
+        assertTrue(PhoneUtil.sameNumber("+43 664 1234567", "06641234567"))
+        assertFalse(PhoneUtil.sameNumber("0664 1234567", "0664 1234568"))
+        assertFalse(PhoneUtil.sameNumber("", ""))
+    }
+
+    @Test fun sectionsGroupByInitial() {
+        assertEquals('A', PhoneUtil.section("  anna"))
+        assertEquals('#', PhoneUtil.section("1-800"))
+        assertEquals('#', PhoneUtil.section(""))
+    }
+
+    @Test fun groupsConsecutiveCallsFromSameNumber() {
+        fun e(id: Long, n: String) = CallEntry(id, n, null, 1, id, 0)
+        val g = Data.group(listOf(e(5, "0664 1"), e(4, "06641"), e(3, "0699 2"), e(2, "0664 1")))
+        assertEquals(listOf(2, 1, 1), g.map { it.count })
+    }
+
+    @Test fun frequentRanksOutgoingNumbers() {
+        fun out(id: Long, n: String) = CallEntry(id, n, null, 2, id, 0)
+        val f = Data.frequent(listOf(out(1, "111111"), out(2, "222222"), out(3, "222222")), emptySet())
+        assertEquals("222222", f.first().number)
+    }
 }
