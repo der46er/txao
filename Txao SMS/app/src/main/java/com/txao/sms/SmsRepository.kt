@@ -20,6 +20,8 @@ class SmsRepository(private val context: Context, private val store: Store) {
         val addresses = canonicalAddresses()
         val unread = unreadByThread()
         val pinned = store.pinned
+        val archived = store.archived
+        val muted = store.muted
         val out = ArrayList<Conversation>()
         val uri = Uri.parse("content://mms-sms/conversations?simple=true")
         resolver.query(uri, arrayOf("_id", "date", "message_count", "recipient_ids", "snippet"), null, null, "date DESC")?.use { c ->
@@ -29,13 +31,18 @@ class SmsRepository(private val context: Context, private val store: Store) {
                 val address = c.getString(3).orEmpty().trim().split(' ')
                     .mapNotNull { addresses[it.toLongOrNull()] }.joinToString(", ")
                 if (address.isEmpty()) continue
-                out += Conversation(id, address, displayName(address), c.getString(4).orEmpty(), c.getLong(1), unread[id] ?: 0, id in pinned)
+                out += Conversation(id, address, displayName(address), c.getString(4).orEmpty(), c.getLong(1), unread[id] ?: 0, id in pinned, id in archived, id in muted)
             }
         }
         return out.sortedWith(compareByDescending<Conversation> { it.pinned }.thenByDescending { it.date })
     }
 
     fun messages(threadId: Long): List<Msg> = query("${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()), "date ASC", null)
+
+    fun messagesByIds(ids: Collection<Long>): List<Msg> {
+        if (ids.isEmpty()) return emptyList()
+        return query("${Telephony.Sms._ID} IN (${ids.joinToString(",")})", emptyArray(), "date DESC", null)
+    }
 
     fun search(text: String): List<Msg> {
         val q = text.trim()
@@ -146,6 +153,8 @@ class SmsRepository(private val context: Context, private val store: Store) {
     fun deleteThread(threadId: Long) {
         resolver.delete(Telephony.Sms.CONTENT_URI, "${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()))
         store.pinned = store.pinned - threadId
+        store.archived = store.archived - threadId
+        store.muted = store.muted - threadId
     }
 
     fun deleteMessage(id: Long) {

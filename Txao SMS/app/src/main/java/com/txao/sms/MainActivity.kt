@@ -25,9 +25,11 @@ import androidx.compose.ui.Modifier
 
 /** Where the user currently is. A chat is identified by its address; the thread id is looked up on demand. */
 sealed interface Screen {
-    data object Chats : Screen
-    data object New : Screen
+    data class Chats(val archived: Boolean = false) : Screen
+    data class New(val draft: String = "") : Screen
     data object Search : Screen
+    data object Starred : Screen
+    data object Blocked : Screen
     data object Settings : Screen
     data class Chat(val address: String, val threadId: Long?, val draft: String = "") : Screen
 }
@@ -78,7 +80,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Root() {
-        var screen by remember { mutableStateOf<Screen>(Screen.Chats) }
+        var screen by remember { mutableStateOf<Screen>(Screen.Chats()) }
         // An intent from outside (notification, "text this number", share) replaces the current screen.
         val target = incoming
         LaunchedEffect(target) {
@@ -88,19 +90,21 @@ class MainActivity : ComponentActivity() {
             }
         }
         val s = screen
-        BackHandler(enabled = s != Screen.Chats) {
-            screen = Screen.Chats
+        BackHandler(enabled = s != Screen.Chats()) {
+            screen = Screen.Chats()
         }
         val modifier = Modifier.fillMaxSize().statusBarsPadding()
+        val home = { screen = Screen.Chats() }
         when (s) {
-            Screen.Chats -> ChatsScreen(vm, modifier, onOpen = { screen = Screen.Chat(it.address, it.threadId) },
-                onNew = { screen = Screen.New }, onSearch = { screen = Screen.Search }, onSettings = { screen = Screen.Settings })
-            Screen.New -> NewChatScreen(vm, modifier, onBack = { screen = Screen.Chats },
-                onPick = { screen = Screen.Chat(it, vm.repo.existingThreadId(it)) })
-            Screen.Search -> SearchScreen(vm, modifier, onBack = { screen = Screen.Chats },
-                onOpen = { m -> screen = Screen.Chat(m.address, m.threadId) })
-            Screen.Settings -> SettingsScreen(vm, modifier, onBack = { screen = Screen.Chats })
-            is Screen.Chat -> ChatScreen(vm, s, modifier, onBack = { screen = Screen.Chats })
+            is Screen.Chats -> ChatsScreen(vm, s.archived, modifier, onOpen = { screen = Screen.Chat(it.address, it.threadId) },
+                onNew = { screen = Screen.New() }, onSearch = { screen = Screen.Search }, onNavigate = { screen = it })
+            is Screen.New -> NewChatScreen(vm, s.draft, modifier, onBack = home,
+                onPick = { screen = Screen.Chat(it, vm.repo.existingThreadId(it), s.draft) })
+            Screen.Search -> SearchScreen(vm, modifier, onBack = home, onOpen = { m -> screen = Screen.Chat(m.address, m.threadId) })
+            Screen.Starred -> StarredScreen(vm, modifier, onBack = home, onOpen = { m -> screen = Screen.Chat(m.address, m.threadId) })
+            Screen.Blocked -> BlockedScreen(vm, modifier, onBack = home)
+            Screen.Settings -> SettingsScreen(vm, modifier, onBack = home)
+            is Screen.Chat -> ChatScreen(vm, s, modifier, onBack = home, onForward = { screen = Screen.New(it) })
         }
     }
 
@@ -114,7 +118,7 @@ class MainActivity : ComponentActivity() {
                 val data: Uri = i.data ?: return null
                 val number = Numbers.clean(Uri.decode(data.schemeSpecificPart.substringBefore('?')))
                 val body = i.getStringExtra("sms_body") ?: i.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-                if (number.isEmpty()) Screen.New else Screen.Chat(number, null, body)
+                if (number.isEmpty()) Screen.New() else Screen.Chat(number, null, body)
             }
             Intent.ACTION_SEND -> Screen.Chat("", null, i.getStringExtra(Intent.EXTRA_TEXT).orEmpty())
             else -> null

@@ -12,6 +12,8 @@ data class Conversation(
     val date: Long,
     val unread: Int,
     val pinned: Boolean,
+    val archived: Boolean = false,
+    val muted: Boolean = false,
 ) {
     val title get() = name ?: address
 }

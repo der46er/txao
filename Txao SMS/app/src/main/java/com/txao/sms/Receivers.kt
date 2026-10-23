@@ -28,7 +28,9 @@ class SmsReceiver : BroadcastReceiver() {
                     if (store.isBlocked(sender)) continue
                     val uri = repo.insert(sender, body.toString(), Telephony.Sms.MESSAGE_TYPE_INBOX, read = false, date = System.currentTimeMillis())
                     val threadId = repo.threadIdFor(sender)
-                    if (uri != null) Notifications.showIncoming(context, repo, store, threadId, sender)
+                    // A new message brings an archived chat back to the inbox.
+                    store.archived = store.archived - threadId
+                    if (uri != null && threadId !in store.muted) Notifications.showIncoming(context, repo, store, threadId, sender)
                 }
             } finally {
                 pending.finish()

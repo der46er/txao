@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -52,3 +53,7 @@ fun Modifier.glass(radius: Dp = 22.dp, fill: Color = Color(0x14FFFFFF)): Modifie
     val shape = RoundedCornerShape(radius)
     return this.clip(shape).background(fill).border(1.dp, Color(0x24FFFFFF), shape)
 }
+
+/** Frosted surface in any shape (chat bubbles use different corner radii). */
+fun Modifier.glassIn(shape: Shape, fill: Color = Color(0x14FFFFFF)): Modifier =
+    this.clip(shape).background(fill).border(1.dp, Color(0x24FFFFFF), shape)

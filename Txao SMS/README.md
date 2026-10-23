@@ -11,17 +11,21 @@ the phone's normal SMS database, so nothing is locked into this app.
 Written from scratch for Txao; the open-source Fossify Messages app was only used to decide which features
 an SMS app needs.
 
-## Features
+## Features (modelled on Google Messages, in the Txao glass look)
 
 - Becomes your **default SMS app** (required by Android to send/receive); asks once on first start
-- Conversation list with unread counts, contact names, pin, delete, block
-- Chat view with day separators, segment counter (GSM-7 / Unicode), copy, delete, retry failed
-- Notifications with **Reply** and **Mark as read**
-- **Send later**: exact-alarm scheduled messages that survive reboot
-- Message search, blocked numbers (blocked senders are dropped silently)
+- Inbox with a search pill, side drawer (Inbox, Archived, Starred, Spam & blocked, Settings), colored contact avatars,
+  bold unread chats, pinned and muted markers, and a "Start chat" button
+- **Swipe** a chat to archive it; **long-press** to select several (pin, archive, delete, block, mute)
+- Chat: grouped bubbles with the contact picture on the last one, "Today • 14:05" dividers, Sent / Delivered /
+  "Not sent · Tap to retry" status, in-chat search, call, mute, archive, block, delete
+- Select messages to star, copy, forward, delete or see details (size, encoding, SMS parts)
+- Start-chat screen with a contact list (A-Z headers), typed numbers, and forwarding
+- Notifications with **Reply** and **Mark as read**; archived chats come back on a new message
+- **Send later** via exact alarms (survives reboot), blocked numbers, delivery reports
 - "Text this number" links (`sms:` / `smsto:`) and the Share menu (e.g. from Txao Notes or Calculator)
 
-Not yet: MMS (picture/group messages), dual-SIM selection, backup/export.
+Not yet: MMS (picture/group messages), RCS, dual-SIM selection, backup/export.
 
 ## Build
 
