@@ -17,7 +17,25 @@ class MainActivity : ComponentActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
         if (savedInstanceState == null) handle(intent)
-        setContent { TxaoTheme { AuthScreen(vm) } }
+        setContent {
+            TxaoTheme {
+                if (vm.locked && vm.settings.appLock) {
+                    LockScreen(onUnlocked = { vm.locked = false }, onPrompt = { vm.skipNextLock = true })
+                } else {
+                    AuthScreen(vm)
+                }
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        vm.skipNextLock = false
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (vm.settings.appLock && !vm.skipNextLock && !isChangingConfigurations) vm.locked = true
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -90,7 +90,7 @@ class OtpTest {
         assertNull(Account.fromUri("otpauth://totp/x?secret=!!!"))                    // bad base32
         assertNull(Account.fromUri("otpauth://totp/x?secret=JBSWY3DP&digits=12"))     // digits out of range
         assertNull(Account.fromUri("otpauth://totp/x?secret=JBSWY3DP&algorithm=MD5")) // unsupported algorithm
-        assertNull(Account.fromUri("otpauth://steam/x?secret=JBSWY3DP"))              // unsupported type
+        assertNull(Account.fromUri("otpauth://yandex/x?secret=JBSWY3DP"))             // unsupported type
     }
 
     @Test fun uriAndJsonRoundTrip() {
