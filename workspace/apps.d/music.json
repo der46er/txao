@@ -1,4 +1,9 @@
 {
-  "id": "music", "name": "Txao Music Player", "package": "com.txao.music", "status": "planned",
-  "description": "Offline music player with background playback and sleep timer.", "accent": "#f368e0"
+  "id": "music",
+  "name": "Txao Music Player",
+  "package": "com.txao.music",
+  "status": "planned",
+  "description": "Offline music player with background playback and sleep timer.",
+  "accent": "#f368e0",
+  "icon": "icons/music.svg"
 }

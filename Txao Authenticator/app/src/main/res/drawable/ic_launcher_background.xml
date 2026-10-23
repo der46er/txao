@@ -5,7 +5,7 @@
     <path android:fillColor="#0B0E14" android:pathData="M0,0h108v108h-108z" />
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
-            <gradient android:type="radial" android:centerX="90" android:centerY="90" android:gradientRadius="80">
+            <gradient android:type="radial" android:centerX="18" android:centerY="84" android:gradientRadius="78">
                 <item android:offset="0" android:color="#8CB79CFF" />
                 <item android:offset="1" android:color="#00B79CFF" />
             </gradient>
@@ -13,7 +13,7 @@
     </path>
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
-            <gradient android:type="radial" android:centerX="10" android:centerY="95" android:gradientRadius="62">
+            <gradient android:type="radial" android:centerX="100" android:centerY="92" android:gradientRadius="64">
                 <item android:offset="0" android:color="#66D7A6C6" />
                 <item android:offset="1" android:color="#00D7A6C6" />
             </gradient>
@@ -21,7 +21,7 @@
     </path>
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
-            <gradient android:type="radial" android:centerX="20" android:centerY="12" android:gradientRadius="60">
+            <gradient android:type="radial" android:centerX="88" android:centerY="14" android:gradientRadius="58">
                 <item android:offset="0" android:color="#668FA3D6" />
                 <item android:offset="1" android:color="#008FA3D6" />
             </gradient>
