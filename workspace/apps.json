@@ -11,16 +11,6 @@
       "accent": "#ff9f43"
     },
     {
-      "id": "notes",
-      "name": "Txao Notes",
-      "package": "com.txao.notes",
-      "version": "1.0.2",
-      "status": "available",
-      "description": "Notes with checklists, labels, reminders and optional end-to-end encrypted sync to your own server.",
-      "file": "downloads/txao-notes-1.0.2.apk",
-      "accent": "#feca57"
-    },
-    {
       "id": "files",
       "name": "Txao Files",
       "package": "com.txao.files",
@@ -31,12 +21,22 @@
       "accent": "#54a0ff"
     },
     {
-      "id": "gallery",
-      "name": "Txao Gallery",
-      "package": "com.txao.gallery",
+      "id": "notes",
+      "name": "Txao Notes",
+      "package": "com.txao.notes",
+      "version": "1.0.2",
+      "status": "available",
+      "description": "Notes with checklists, labels, reminders and optional end-to-end encrypted sync to your own server.",
+      "file": "downloads/txao-notes-1.0.2.apk",
+      "accent": "#feca57"
+    },
+    {
+      "id": "authenticator",
+      "name": "Txao Authenticator",
+      "package": "com.txao.authenticator",
       "status": "planned",
-      "description": "Photo and video gallery.",
-      "accent": "#ff6b9d"
+      "description": "Two-factor authentication codes (TOTP).",
+      "accent": "#2ed8a3"
     },
     {
       "id": "calendar",
@@ -47,12 +47,12 @@
       "accent": "#5f7cff"
     },
     {
-      "id": "authenticator",
-      "name": "Txao Authenticator",
-      "package": "com.txao.authenticator",
+      "id": "gallery",
+      "name": "Txao Gallery",
+      "package": "com.txao.gallery",
       "status": "planned",
-      "description": "Two-factor authentication codes (TOTP).",
-      "accent": "#2ed8a3"
+      "description": "Photo and video gallery.",
+      "accent": "#ff6b9d"
     },
     {
       "id": "sms",

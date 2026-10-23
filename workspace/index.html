@@ -135,7 +135,7 @@
             document.getElementById('grid').innerHTML = apps.map(a => {
                 const ready = a.status === 'available';
                 const btn = ready
-                    ? `<a class="pill" href="${esc(a.file)}" download>Download</a>`
+                    ? `<a class="pill" href="${esc(a.file)}" download="${esc(a.file.split('/').pop())}" type="application/vnd.android.package-archive">Download</a>`
                     : `<a class="pill" aria-disabled="true">Coming soon</a>`;
                 return `<article class="card${ready ? '' : ' soon'}" style="--accent:${esc(a.accent || '#C7D4FF')}">
                     <div class="icon" aria-hidden="true">${initial(a.name)}</div>

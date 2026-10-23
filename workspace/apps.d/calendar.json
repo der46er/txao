@@ -1,0 +1,8 @@
+{
+  "id": "calendar",
+  "name": "Txao Calendar",
+  "package": "com.txao.calendar",
+  "status": "planned",
+  "description": "Calendar and events.",
+  "accent": "#5f7cff"
+}
