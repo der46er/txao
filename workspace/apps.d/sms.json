@@ -1,0 +1,8 @@
+{
+  "id": "sms",
+  "name": "Txao SMS",
+  "package": "com.txao.sms",
+  "status": "planned",
+  "description": "SMS messaging.",
+  "accent": "#a78bfa"
+}
