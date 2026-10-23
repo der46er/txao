@@ -52,7 +52,8 @@
       "package": "com.txao.gallery",
       "status": "planned",
       "description": "Photo and video gallery.",
-      "accent": "#ff6b9d"
+      "accent": "#ff6b9d",
+      "icon": "icons/gallery.svg"
     },
     {
       "id": "music",
