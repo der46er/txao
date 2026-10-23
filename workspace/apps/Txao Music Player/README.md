@@ -4,7 +4,7 @@ Offline music player for the audio stored on your device. No accounts, no ads, n
 
 Features: songs / albums / artists browsing, search, background playback with media notification and lock-screen controls, queue-aware shuffle and repeat (off / all / one), seek bar, sleep timer.
 
-All code is original and written from scratch (see `../CONVENTIONS.md`, clean-room rule).
+All code is original and written from scratch (see `../../CONVENTIONS.md`, clean-room rule).
 
 ## Build
 ```

@@ -11,7 +11,7 @@ Dialer for Android in the TXAO glass look, with the layout and features people k
 - Blocked numbers: callers on the block list are rejected before they ring (needs Txao Phone as the default phone app)
 - In-call screen: answer/decline, mute, speaker, hold, keypad tones, call timer
 
-Written from scratch for TXAO; see `workspace/CONVENTIONS.md`.
+Written from scratch for TXAO; see `workspace/CONVENTIONS.md` (this app lives in `workspace/apps/`).
 
 ## Build and test
 ```
