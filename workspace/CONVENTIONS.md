@@ -8,9 +8,11 @@ Derived from the existing apps (Calculator, Notes, Files). New apps (Gallery, Ca
 Open-source reference apps (e.g. the Fossify Gallery/Calendar/Messages zips) are for understanding **features only**.
 All TXAO code is written from scratch. Do not copy, translate or paraphrase source files, resources, strings or icons.
 
-## Project layout (one Gradle project per app, own folder/repo dir)
+## Project layout (one Gradle project per app)
+Every app project lives in its own subfolder of **`workspace/apps/`** (e.g. `workspace/apps/Txao SMS/`); never at the repo root.
+Build each one from inside its own folder. Built APKs for the download page go to `workspace/downloads/`.
 ```
-Txao <Name>/
+workspace/apps/Txao <Name>/
   app/src/main/{AndroidManifest.xml,java/com/txao/<name>,res}
   app/src/test/java/com/txao/<name>
   build.gradle.kts  settings.gradle.kts  gradle.properties  .gitignore  README.md
