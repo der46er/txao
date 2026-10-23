@@ -43,6 +43,10 @@ object Thumbs {
         return bmp.asImageBitmap()
     }
 
+    /** Uncached, down-sampled and EXIF-rotated bitmap for editing. */
+    fun bitmap(context: Context, item: MediaItem, maxPx: Int): Bitmap? =
+        runCatching { decode(context, item, maxPx) }.getOrNull()
+
     fun videoFrame(context: Context, item: MediaItem): Bitmap? {
         val r = MediaMetadataRetriever()
         return try {

@@ -43,4 +43,52 @@ class MediaTest {
         assertEquals(1, sampleSize(1000, 800, 2048))
         assertEquals(4, sampleSize(8000, 6000, 2000))
     }
+
+    private fun ms(y: Int, m: Int, d: Int): Long =
+        java.util.Calendar.getInstance().apply { clear(); set(y, m, d, 12, 0) }.timeInMillis
+
+    @Test fun onThisDayGroupsByYearsAgo() {
+        val items = listOf(
+            item(1, "a", ms(2024, 9, 23)), item(2, "b", ms(2025, 9, 23)),
+            item(3, "c", ms(2025, 9, 24)), item(4, "d", ms(2026, 9, 23)),
+        )
+        val memories = onThisDay(items, ms(2026, 9, 23))
+        assertEquals(listOf(1, 2), memories.map { it.yearsAgo })
+        assertEquals(listOf(2L), memories[0].items.map { it.id })
+        assertEquals("1 year ago", memories[0].title)
+        assertEquals("2 years ago", memories[1].title)
+    }
+
+    @Test fun timelineHasHeaderPerDayAndIndexesCells() {
+        val items = listOf(item(1, "a", ms(2026, 9, 23)), item(2, "b", ms(2026, 9, 23)), item(3, "c", ms(2026, 8, 1)))
+        val entries = buildEntries(items, grouped = true)
+        assertEquals(5, entries.size)
+        assertEquals(listOf(0, 1, 2), entries.filterIsInstance<Entry.Cell>().map { it.index })
+        assertEquals(2, entries.count { it is Entry.Header })
+        assertEquals(3, buildEntries(items, grouped = false).size)
+    }
+
+    @Test fun scrubberMapsFractionToIndex() {
+        assertEquals(0, scrubIndex(0f, 100))
+        assertEquals(99, scrubIndex(1f, 100))
+        assertEquals(49, scrubIndex(0.5f, 100))
+        assertEquals(0, scrubIndex(0.7f, 0))
+    }
+
+    @Test fun searchUnderstandsKeywordsAndMonths() {
+        val shot = item(1, "Screenshot_1.png", ms(2026, 9, 5), albumName = "Screenshots")
+        val vid = item(2, "clip.mp4", ms(2026, 9, 6)).copy(isVideo = true, mime = "video/mp4")
+        val photo = item(3, "img.jpg", ms(2025, 0, 6))
+        val all = listOf(shot, vid, photo)
+        assertEquals(listOf(1L), searchItems(all, "screenshots").map { it.id })
+        assertEquals(listOf(2L), searchItems(all, "videos").map { it.id })
+        assertEquals(listOf(3L), searchItems(all, "2025").map { it.id })
+        assertEquals(listOf(3L), searchItems(all, "favorites", setOf(3L)).map { it.id })
+    }
+
+    @Test fun centerCropKeepsRatio() {
+        assertEquals(listOf(0, 0, 400, 300), centerCrop(400, 300, null).toList())
+        assertEquals(listOf(50, 0, 300, 300), centerCrop(400, 300, 1f).toList())
+        assertEquals(listOf(0, 75, 400, 150), centerCrop(400, 300, 400f / 150f).toList())
+    }
 }

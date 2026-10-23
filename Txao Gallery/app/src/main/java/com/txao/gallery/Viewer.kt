@@ -25,6 +25,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
@@ -75,7 +76,7 @@ private const val SLIDESHOW_MS = 3000L
 fun ViewerScreen(
     items: List<MediaItem>, startIndex: Int, favorites: Set<Long>,
     onFavorite: (Long) -> Unit, actions: GalleryActions, onClose: () -> Unit,
-    canDelete: Boolean,
+    canDelete: Boolean, onEdit: ((MediaItem) -> Unit)?,
 ) {
     val ctx = LocalContext.current
     val pager = rememberPagerState(initialPage = startIndex.coerceIn(0, items.lastIndex)) { items.size }
@@ -133,6 +134,7 @@ fun ViewerScreen(
                 if (items.size > 1) {
                     BarButton(if (slideshow) Icons.Default.Pause else Icons.Default.PlayArrow, "Slideshow") { slideshow = !slideshow }
                 }
+                if (!current.isVideo && onEdit != null) BarButton(Icons.Default.Edit, "Edit") { onEdit(current) }
                 if (!current.isVideo) BarButton(Icons.Default.Wallpaper, "Wallpaper") { wallpaper(ctx, current) }
                 BarButton(Icons.Default.Info, "Details") { info = current }
                 if (canDelete) BarButton(Icons.Default.Delete, "Delete") {

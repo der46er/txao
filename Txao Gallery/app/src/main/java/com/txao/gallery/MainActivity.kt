@@ -42,9 +42,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 sealed interface Route {
-    data object Albums : Route
+    data object Home : Route
     data class Grid(val title: String, val source: Source) : Route
-    data class Viewer(val items: List<MediaItem>, val index: Int, val standalone: Boolean = false) : Route
+    data class Viewer(val items: List<MediaItem>, val index: Int) : Route
+    data class Editor(val item: MediaItem) : Route
 }
 
 sealed interface Source {
@@ -52,7 +53,8 @@ sealed interface Source {
     data class OfAlbum(val albumId: Long) : Source
     data object Favorites : Source
     data object Trash : Source
-    data object Search : Source
+    data object Videos : Source
+    data object Screenshots : Source
 }
 
 class MainActivity : ComponentActivity() {
@@ -62,7 +64,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         externalUri = viewUri(intent)
-        setContent { TxaoTheme { Root() } }
+        setContent { TxaoTheme { GlassBackground(Modifier.fillMaxSize()) { Root() } } }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -75,8 +77,10 @@ class MainActivity : ComponentActivity() {
     private fun neededPermissions(): Array<String> =
         if (Build.VERSION.SDK_INT >= 33) {
             arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
+        } else if (Build.VERSION.SDK_INT >= 29) {
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
 
     private fun hasAccess() = neededPermissions().all {
@@ -101,7 +105,8 @@ class MainActivity : ComponentActivity() {
         var sort by remember { mutableStateOf(prefs.sort) }
         var columns by remember { mutableStateOf(prefs.columns) }
         var loaded by remember { mutableStateOf(false) }
-        val stack = remember { mutableStateOf<List<Route>>(listOf(Route.Albums)) }
+        var tab by remember { mutableStateOf(Tab.Photos) }
+        val stack = remember { mutableStateOf<List<Route>>(listOf<Route>(Route.Home)) }
 
         fun refresh() {
             scope.launch {
@@ -157,7 +162,7 @@ class MainActivity : ComponentActivity() {
             ViewerScreen(
                 items = listOf(item), startIndex = 0, favorites = favorites,
                 onFavorite = {}, actions = actions, onClose = { externalUri = null; if (!granted) finish() },
-                canDelete = false,
+                canDelete = false, onEdit = null,
             )
             return
         }
@@ -180,34 +185,34 @@ class MainActivity : ComponentActivity() {
         val visible = remember(all, hidden) { all.filter { it.albumId !in hidden } }
 
         when (route) {
-            Route.Albums -> AlbumsScreen(
+            Route.Home -> HomeScreen(
+                tab = tab, onTab = { tab = it },
+                visible = visible,
                 albums = remember(all, hidden, sort) { groupAlbums(all, hidden, sort) },
                 hiddenAlbums = remember(all, hidden) { groupAlbums(all, emptySet(), sort).filter { it.id in hidden } },
-                loaded = loaded,
-                sort = sort, columns = columns,
+                trashedCount = trashed.size, loaded = loaded, favorites = favorites, sort = sort, columns = columns,
+                trashSupported = Build.VERSION.SDK_INT >= 30,
                 onSort = { sort = it; prefs.sort = it },
                 onColumns = { columns = it; prefs.columns = it },
-                onAlbum = { push(Route.Grid(it.name, Source.OfAlbum(it.id))) },
-                onAll = { push(Route.Grid("All media", Source.All)) },
-                onFavorites = { push(Route.Grid("Favorites", Source.Favorites)) },
-                onTrash = { push(Route.Grid("Trash", Source.Trash)) },
-                onSearch = { push(Route.Grid("Search", Source.Search)) },
+                onOpen = { list, i -> push(Route.Viewer(list, i)) },
+                onSource = { title, source -> push(Route.Grid(title, source)) },
                 onHide = { hidden = hidden + it.id; prefs.hiddenAlbums = hidden },
                 onUnhide = { hidden = hidden - it.id; prefs.hiddenAlbums = hidden },
-                trashSupported = Build.VERSION.SDK_INT >= 30,
+                actions = actions,
             )
 
             is Route.Grid -> {
                 val base = when (route.source) {
-                    Source.All, Source.Search -> visible
+                    Source.All -> visible
                     is Source.OfAlbum -> all.filter { it.albumId == route.source.albumId }
                     Source.Favorites -> visible.filter { it.id in favorites }
                     Source.Trash -> trashed
+                    Source.Videos -> visible.filter { it.isVideo }
+                    Source.Screenshots -> visible.filter { isScreenshot(it) }
                 }
                 GridScreen(
-                    title = route.title, source = route.source, base = base, sort = sort, columns = columns,
-                    favorites = favorites,
-                    onBack = ::pop,
+                    title = route.title, base = base, source = route.source, sort = sort, columns = columns,
+                    favorites = favorites, onBack = ::pop,
                     onOpen = { list, i -> push(Route.Viewer(list, i)) },
                     onColumns = { columns = it; prefs.columns = it },
                     onSort = { sort = it; prefs.sort = it },
@@ -218,7 +223,12 @@ class MainActivity : ComponentActivity() {
             is Route.Viewer -> ViewerScreen(
                 items = route.items, startIndex = route.index, favorites = favorites,
                 onFavorite = ::toggleFavorite, actions = actions, onClose = ::pop,
-                canDelete = true,
+                canDelete = true, onEdit = { push(Route.Editor(it)) },
+            )
+
+            is Route.Editor -> EditorScreen(
+                item = route.item, onClose = ::pop,
+                onSaved = { refresh(); pop() },
             )
         }
     }
@@ -231,7 +241,7 @@ interface GalleryActions {
 
 @Composable
 private fun PermissionGate(onAsk: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(GlassBg), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("TXAO GALLERY", color = Color.White, fontWeight = FontWeight.Black, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
             Spacer(Modifier.height(12.dp))
