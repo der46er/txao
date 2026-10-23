@@ -1,0 +1,8 @@
+{
+  "id": "authenticator",
+  "name": "Txao Authenticator",
+  "package": "com.txao.authenticator",
+  "status": "planned",
+  "description": "Two-factor authentication codes (TOTP).",
+  "accent": "#2ed8a3"
+}

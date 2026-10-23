@@ -39,9 +39,16 @@ Bump `versionCode`/`versionName` each release; APK name `txao-<name>-v<version>-
 Each app has a README (what it is, build command `gradle :app:assembleRelease`, tests `gradle :app:testDebugUnitTest`).
 
 ## Adding an app to the download page
-1. Copy the signed APK to `workspace/downloads/txao-<name>-<version>.apk`.
-2. In `workspace/apps.json`, set that app's `status` to `"available"`, and add `version` and `file`.
-The page renders from `apps.json`; no HTML edits needed. Planned apps are already listed as "Coming soon".
+Each app owns ONE small file, `workspace/apps.d/<id>.json`, so parallel PRs never touch the same file:
+```json
+{ "id": "sms", "name": "Txao SMS", "package": "com.txao.sms", "status": "planned",
+  "description": "SMS messaging.", "accent": "#a78bfa" }
+```
+To release: copy the signed APK to `workspace/downloads/txao-<name>-<version>.apk`, then in your entry set
+`"status": "available"`, `"version"` and `"file": "downloads/txao-<name>-<version>.apk"`.
+**Never edit `workspace/apps.json`**: it is generated from `apps.d/` by `workspace/build-apps.py`
+(a GitHub Action regenerates it on main; you can also run `python3 workspace/build-apps.py` locally).
+Pressing Download on the page downloads the APK directly. Planned apps show "Coming soon".
 
 ## Branding
-Dark `#0D0D0D` background, translucent "glass" cards (`rgba(18,18,18,.88)`, 1px `rgba(255,255,255,.12)` border, rounded), Inter font, white primary buttons, uppercase black-weight headings.
+Dark `#0B0E14` background (matches the apps' `txao_bg`), translucent glass cards with HyperOS-style large corners (24-32px), Material 3 tonal buttons (pill, light-blue primary), per-app accent colour (`accent` in the app's `apps.d` entry), soft colour glows. Download page layout follows a Proton-style product grid.

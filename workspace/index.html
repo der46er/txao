@@ -3,39 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TXAO Workspace</title>
-    <meta name="description" content="Download the TXAO Android apps.">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>TXAO Apps</title>
+    <meta name="description" content="Private, ad-free Android apps by TXAO. Download the whole suite.">
+    <meta name="theme-color" content="#0B0E14">
     <style>
-        body { font-family: 'Inter', system-ui, sans-serif; background-color: #0D0D0D; color: #fff; margin: 0; }
-        .glass-box { background: rgba(18,18,18,0.88); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+        :root {
+            --bg: #0B0E14;                       /* same as the apps' txao_bg */
+            --surface: rgba(255,255,255,.055);   /* glass card */
+            --surface-hi: rgba(255,255,255,.09);
+            --line: rgba(255,255,255,.10);
+            --text: #F2F4F8;
+            --muted: #9AA3B2;
+            --primary: #C7D4FF;                  /* M3 tonal primary */
+            --on-primary: #0B1633;
+            --r-xl: 32px;                        /* HyperOS-style big corners */
+            --r-lg: 24px;
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0; min-height: 100vh; color: var(--text); background: var(--bg);
+            font-family: "Google Sans", "Roboto Flex", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* soft HyperOS-like colour glow behind everything */
+        body::before {
+            content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+            background:
+                radial-gradient(60vmax 40vmax at 15% -10%, rgba(95,124,255,.28), transparent 60%),
+                radial-gradient(50vmax 40vmax at 100% 10%, rgba(255,107,157,.16), transparent 60%),
+                radial-gradient(60vmax 40vmax at 50% 110%, rgba(46,216,163,.14), transparent 60%);
+        }
+        .wrap { width: min(1080px, 100% - 32px); margin: 0 auto; }
+
+        nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+        .brand { font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: 15px; }
+        .pill {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none; cursor: pointer;
+            padding: 12px 22px; border-radius: 999px; font: 600 14px/1 inherit; border: 0;
+            background: var(--primary); color: var(--on-primary); transition: transform .15s, filter .15s;
+        }
+        .pill:hover { filter: brightness(1.08); } .pill:active { transform: scale(.97); }
+        .pill.tonal { background: var(--surface-hi); color: var(--text); border: 1px solid var(--line); }
+        .pill[aria-disabled="true"] { background: var(--surface); color: var(--muted); pointer-events: none; border: 1px solid var(--line); }
+
+        .hero { text-align: center; padding: 56px 0 40px; }
+        .hero h1 { font-size: clamp(36px, 7vw, 64px); line-height: 1.05; margin: 0 0 16px; font-weight: 800; letter-spacing: -.03em; }
+        .hero p { color: var(--muted); font-size: clamp(16px, 2.4vw, 20px); max-width: 560px; margin: 0 auto 28px; }
+        .hero .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        .values { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 8px 0 56px; }
+        .value { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 20px; backdrop-filter: blur(20px); }
+        .value b { display: block; margin-bottom: 4px; }
+        .value span { color: var(--muted); font-size: 14px; }
+
+        h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .card {
+            --accent: #C7D4FF; position: relative; overflow: hidden;
+            background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl);
+            padding: 24px; display: flex; flex-direction: column; gap: 14px; backdrop-filter: blur(24px);
+            transition: transform .2s, background .2s;
+        }
+        .card::after { /* accent glow in the corner */
+            content: ""; position: absolute; width: 200px; height: 200px; right: -70px; top: -70px; border-radius: 50%;
+            background: var(--accent); opacity: .16; filter: blur(40px); pointer-events: none;
+        }
+        .card:hover { transform: translateY(-3px); background: var(--surface-hi); }
+        .icon {
+            width: 64px; height: 64px; border-radius: 22px; display: grid; place-items: center;
+            font-size: 28px; font-weight: 800; color: #0B0E14;
+            background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #fff));
+            box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent);
+        }
+        .card h3 { margin: 0; font-size: 20px; }
+        .card .desc { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; flex: 1; }
+        .meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .tag { font-size: 12px; color: var(--muted); }
+        .card.soon { opacity: .85; }
+
+        .steps { margin: 56px 0 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); padding: 28px; }
+        .steps ol { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.8; }
+        .steps li b { color: var(--text); }
+        footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0 40px; }
+        #error { color: #ff8a8a; display: none; }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto; } }
     </style>
 </head>
-<body class="min-h-screen selection:bg-white/10">
-    <main class="w-full max-w-lg mx-auto px-4 py-8 space-y-4">
-        <div class="glass-box rounded-2xl p-5">
-            <h1 class="text-lg font-black italic uppercase tracking-wider">TXAO Workspace</h1>
-            <p class="text-sm text-zinc-400 mt-1">Android apps. Download the APK and open it on your phone to install (you may need to allow installs from your browser).</p>
-        </div>
-        <div id="apps" class="space-y-4"></div>
-        <p id="error" class="text-sm text-red-400 hidden">Could not load the app list.</p>
-    </main>
+<body>
+    <div class="wrap">
+        <nav>
+            <div class="brand">TXAO</div>
+            <a class="pill tonal" href="#apps">All apps</a>
+        </nav>
+
+        <header class="hero">
+            <h1>Simple apps.<br>Fully yours.</h1>
+            <p>The TXAO suite for Android. No ads, no analytics, no accounts.</p>
+            <div class="row"><a class="pill" href="#apps">Download apps</a><a class="pill tonal" href="#install">How to install</a></div>
+        </header>
+
+        <section class="values" aria-label="Principles">
+            <div class="value"><b>No ads</b><span>Nothing to watch, nothing to dismiss.</span></div>
+            <div class="value"><b>No tracking</b><span>No analytics, no accounts.</span></div>
+            <div class="value"><b>Your data</b><span>Stays on your phone. Sync only to your own server.</span></div>
+        </section>
+
+        <section id="apps">
+            <h2>Apps</h2>
+            <div id="grid" class="grid"></div>
+            <p id="error">Could not load the app list.</p>
+        </section>
+
+        <section id="install" class="steps">
+            <h2>Install</h2>
+            <ol>
+                <li><b>Download</b> the APK of the app you want.</li>
+                <li><b>Open</b> it from your notifications or Downloads.</li>
+                <li><b>Allow</b> installs from your browser when Android asks.</li>
+            </ol>
+        </section>
+
+        <footer>TXAO &middot; Android apps</footer>
+    </div>
+
     <script>
-        // Apps are listed in apps.json: add an entry there, no HTML changes needed.
-        const list = document.getElementById('apps');
+        // Apps come from apps.json: add an entry there, no HTML changes needed.
         const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        const initial = n => esc(n.replace(/^Txao\s+/i, '').charAt(0).toUpperCase());
         fetch('apps.json').then(r => r.json()).then(({ apps }) => {
-            list.innerHTML = apps.map(a => {
+            document.getElementById('grid').innerHTML = apps.map(a => {
                 const ready = a.status === 'available';
-                const action = ready
-                    ? `<a href="${esc(a.file)}" download class="mt-4 w-full flex items-center justify-center px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black hover:bg-zinc-200 transition active:scale-[0.98]">Download v${esc(a.version)}</a>`
-                    : `<div class="mt-4 w-full text-center px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-white/5 text-zinc-500">Coming soon</div>`;
-                return `<div class="glass-box rounded-2xl p-5">
-                    <h2 class="font-black">${esc(a.name)}</h2>
-                    <p class="text-xs text-zinc-500">${esc(a.package)}</p>
-                    <p class="text-sm text-zinc-300 mt-2">${esc(a.description)}</p>${action}</div>`;
+                const btn = ready
+                    ? `<a class="pill" href="${esc(a.file)}" download="${esc(a.file.split('/').pop())}" type="application/vnd.android.package-archive">Download</a>`
+                    : `<a class="pill" aria-disabled="true">Coming soon</a>`;
+                return `<article class="card${ready ? '' : ' soon'}" style="--accent:${esc(a.accent || '#C7D4FF')}">
+                    <div class="icon" aria-hidden="true">${initial(a.name)}</div>
+                    <h3>${esc(a.name)}</h3>
+                    <p class="desc">${esc(a.description)}</p>
+                    <div class="meta">${btn}<span class="tag">${ready ? 'v' + esc(a.version) + ' &middot; Android' : 'In development'}</span></div>
+                </article>`;
             }).join('');
-        }).catch(() => document.getElementById('error').classList.remove('hidden'));
+        }).catch(() => { document.getElementById('error').style.display = 'block'; });
     </script>
 </body>
 </html>
