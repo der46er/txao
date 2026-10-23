@@ -6,5 +6,5 @@
   "status": "available",
   "description": "Notes with checklists, labels, reminders and optional end-to-end encrypted sync to your own server.",
   "file": "downloads/txao-notes-1.0.2.apk",
-  "accent": "#feca57"
+  "icon": "icons/notes.svg"
 }

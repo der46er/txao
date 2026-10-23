@@ -6,5 +6,5 @@
   "status": "available",
   "description": "File manager.",
   "file": "downloads/txao-files-1.1.5.apk",
-  "accent": "#54a0ff"
+  "icon": "icons/files.svg"
 }

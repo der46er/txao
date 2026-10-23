@@ -46,9 +46,10 @@ Each app owns ONE small file, `workspace/apps.d/<id>.json`, so parallel PRs neve
 ```
 To release: copy the signed APK to `workspace/downloads/txao-<name>-<version>.apk`, then in your entry set
 `"status": "available"`, `"version"` and `"file": "downloads/txao-<name>-<version>.apk"`.
+Icon: put a square SVG at `workspace/icons/<id>.svg` and set `"icon": "icons/<id>.svg"` in your entry (apps without one get a generated placeholder). The Calculator/Notes/Files icons were recreated from their launcher icons; the suite design thread will replace them with the new icon family, so keep the same path and file name.
 **Never edit `workspace/apps.json`**: it is generated from `apps.d/` by `workspace/build-apps.py`
 (a GitHub Action regenerates it on main; you can also run `python3 workspace/build-apps.py` locally).
 Pressing Download on the page downloads the APK directly. Planned apps show "Coming soon".
 
 ## Branding
-Dark `#0B0E14` background (matches the apps' `txao_bg`), translucent glass cards with HyperOS-style large corners (24-32px), Material 3 tonal buttons (pill, light-blue primary), per-app accent colour (`accent` in the app's `apps.d` entry), soft colour glows. Download page layout follows a Proton-style product grid.
+Dark `#0B0E14` background (matches the apps' `txao_bg`), translucent glass cards with HyperOS-style large corners (24-32px), Material 3 tonal buttons (pill, light-blue primary), soft colour glows. The download page reuses the apps' wallpaper (`#0B0E14` + glows `#8FA3D6`, `#B79CFF`, `#D7A6C6`), glass surfaces (white 30% to 8% gradient), the lavender `#F1E8FF` to `#CDB8FF` accent with `#2E1B5C` text, and shows a Proton-style row of app icons with names underneath.
