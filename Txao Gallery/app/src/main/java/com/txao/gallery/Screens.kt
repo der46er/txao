@@ -15,14 +15,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -33,9 +37,13 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Screenshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,6 +52,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,22 +64,25 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.LaunchedEffect
 
 private val Muted = Color(0xB3FFFFFF)
+private val GlassShape = RoundedCornerShape(24.dp)
+
+enum class Tab(val label: String, val icon: ImageVector) {
+    Photos("Photos", Icons.Default.Photo),
+    Search("Search", Icons.Default.Search),
+    Library("Library", Icons.Default.Collections),
+}
 
 @Composable
-private fun TopBar(
-    title: String,
-    onBack: (() -> Unit)?,
-    actions: @Composable () -> Unit = {},
-) {
+fun TopBar(title: String, onBack: (() -> Unit)?, actions: @Composable () -> Unit = {}) {
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -89,92 +101,319 @@ private fun TopBar(
 }
 
 @Composable
-private fun Chip(label: String, icon: @Composable () -> Unit, onClick: () -> Unit) {
+fun GlassChip(label: String, icon: ImageVector? = null, onClick: () -> Unit) {
     Row(
         Modifier.clip(RoundedCornerShape(50)).background(GlassCard).border(1.dp, GlassBorder, RoundedCornerShape(50))
-            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        icon()
-        Spacer(Modifier.width(6.dp))
+        if (icon != null) {
+            Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+        }
         Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
-private fun SortColumnsMenu(
-    expanded: Boolean, onDismiss: () -> Unit,
-    sort: SortSpec, columns: Int,
-    onSort: (SortSpec) -> Unit, onColumns: (Int) -> Unit,
+private fun ColumnsSortMenu(
+    sort: SortSpec, columns: Int, onSort: (SortSpec) -> Unit, onColumns: (Int) -> Unit,
 ) {
-    DropdownMenu(expanded, onDismiss) {
-        for (f in SortField.entries) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) { Icon(Icons.Default.MoreVert, "More", tint = Color.White) }
+        DropdownMenu(open, { open = false }) {
+            for (f in SortField.entries) {
+                DropdownMenuItem(
+                    text = { Text((if (sort.field == f) "● " else "○ ") + "Sort by ${f.name.lowercase()}") },
+                    onClick = { onSort(sort.copy(field = f)); open = false },
+                )
+            }
             DropdownMenuItem(
-                text = { Text((if (sort.field == f) "● " else "○ ") + "Sort by ${f.name.lowercase()}") },
-                onClick = { onSort(sort.copy(field = f)); onDismiss() },
+                text = { Text(if (sort.ascending) "Order: oldest / A–Z first" else "Order: newest / Z–A first") },
+                onClick = { onSort(sort.copy(ascending = !sort.ascending)); open = false },
+            )
+            DropdownMenuItem(text = { Text("Larger photos") }, onClick = { onColumns(columns - 1); open = false })
+            DropdownMenuItem(text = { Text("Smaller photos") }, onClick = { onColumns(columns + 1); open = false })
+        }
+    }
+}
+
+/** Timeline plus selection mode (share, delete, restore). Shared by Photos, Search results and folder views. */
+@Composable
+fun MediaBrowser(
+    items: List<MediaItem>, sort: SortSpec, columns: Int, favorites: Set<Long>,
+    isTrash: Boolean, onOpen: (List<MediaItem>, Int) -> Unit, onColumns: (Int) -> Unit,
+    actions: GalleryActions, modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
+    bottomPadding: androidx.compose.ui.unit.Dp = 24.dp,
+    topBar: @Composable () -> Unit,
+) {
+    val ctx = LocalContext.current
+    var selected by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var confirm by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val selecting = selected.isNotEmpty()
+    val chosen = items.filter { it.id in selected }
+    fun done() { selected = emptySet() }
+
+    Column(modifier.fillMaxSize()) {
+        if (selecting) {
+            TopBar("${selected.size} selected", { selected = emptySet() }) {
+                IconButton(onClick = {
+                    val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "*/*"
+                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(chosen.map { it.uri }))
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    ctx.startActivity(Intent.createChooser(send, null))
+                }) { Icon(Icons.Default.Share, "Share", tint = Color.White) }
+                if (isTrash) {
+                    IconButton(onClick = { actions.trash(chosen, false, ::done) }) { Icon(Icons.Default.Restore, "Restore", tint = Color.White) }
+                    IconButton(onClick = { actions.deleteForever(chosen, ::done) }) { Icon(Icons.Default.DeleteForever, "Delete forever", tint = Color.White) }
+                } else {
+                    IconButton(onClick = {
+                        val run = { actions.trash(chosen, true, ::done) }
+                        if (android.os.Build.VERSION.SDK_INT >= 30) run() else confirm = run
+                    }) { Icon(Icons.Default.Delete, "Delete", tint = Color.White) }
+                }
+            }
+        } else {
+            topBar()
+        }
+
+        if (items.isEmpty() && header == null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(if (isTrash) "Trash is empty" else "Nothing here", color = Muted)
+            }
+        } else {
+            Timeline(
+                items = items, grouped = sort.field == SortField.Date, columns = columns,
+                favorites = favorites, selected = selected,
+                onClick = { item, index ->
+                    when {
+                        selecting -> selected = if (item.id in selected) selected - item.id else selected + item.id
+                        isTrash -> selected = setOf(item.id)
+                        else -> onOpen(items, index)
+                    }
+                },
+                onLongClick = { selected = selected + it.id },
+                onColumns = onColumns, header = header, bottomPadding = bottomPadding,
+                modifier = Modifier.weight(1f),
             )
         }
-        DropdownMenuItem(
-            text = { Text(if (sort.ascending) "Order: oldest / A–Z first" else "Order: newest / Z–A first") },
-            onClick = { onSort(sort.copy(ascending = !sort.ascending)); onDismiss() },
+    }
+
+    confirm?.let { run ->
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text("Delete ${chosen.size} item(s)?") },
+            text = { Text("This permanently deletes the files.") },
+            confirmButton = { TextButton({ confirm = null; run() }) { Text("Delete") } },
+            dismissButton = { TextButton({ confirm = null }) { Text("Cancel") } },
         )
-        DropdownMenuItem(text = { Text("Fewer columns") }, onClick = { onColumns(columns - 1); onDismiss() })
-        DropdownMenuItem(text = { Text("More columns") }, onClick = { onColumns(columns + 1); onDismiss() })
+    }
+}
+
+@Composable
+private fun MemoriesRow(memories: List<Memory>, onOpen: (Memory) -> Unit) {
+    Column(Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+        Text("On this day", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
+        LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(memories, key = { it.yearsAgo }) { m ->
+                Box(Modifier.size(width = 130.dp, height = 180.dp).clip(RoundedCornerShape(20.dp)).clickable { onOpen(m) }) {
+                    Thumb(m.items.first(), 400, Modifier.fillMaxSize())
+                    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000)))))
+                    Column(Modifier.align(Alignment.BottomStart).padding(12.dp)) {
+                        Text(m.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("${m.items.size} items", color = Muted, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeScreen(
+    tab: Tab, onTab: (Tab) -> Unit,
+    visible: List<MediaItem>, albums: List<Album>, hiddenAlbums: List<Album>, trashedCount: Int,
+    loaded: Boolean, favorites: Set<Long>, sort: SortSpec, columns: Int, trashSupported: Boolean,
+    onSort: (SortSpec) -> Unit, onColumns: (Int) -> Unit,
+    onOpen: (List<MediaItem>, Int) -> Unit, onSource: (String, Source) -> Unit,
+    onHide: (Album) -> Unit, onUnhide: (Album) -> Unit, actions: GalleryActions,
+) {
+    val navPad = 96.dp
+    Box(Modifier.fillMaxSize()) {
+        when (tab) {
+            Tab.Photos -> {
+                val memories = remember(visible) { onThisDay(visible) }
+                val sorted = remember(visible, sort) { sortItems(visible, sort) }
+                if (sorted.isEmpty()) {
+                    Column(Modifier.fillMaxSize()) {
+                        TopBar("Txao Photos", null)
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(if (loaded) "No photos or videos found" else "Loading…", color = Muted)
+                        }
+                    }
+                } else {
+                    MediaBrowser(
+                        items = sorted, sort = sort, columns = columns, favorites = favorites, isTrash = false,
+                        onOpen = onOpen, onColumns = onColumns, actions = actions, bottomPadding = navPad,
+                        header = if (memories.isNotEmpty()) ({ MemoriesRow(memories) { onOpen(it.items, 0) } }) else null,
+                        topBar = { TopBar("Txao Photos", null) { ColumnsSortMenu(sort, columns, onSort, onColumns) } },
+                    )
+                }
+            }
+            Tab.Search -> SearchTab(visible, albums, favorites, columns, onOpen, onColumns, onSource, actions, navPad)
+            Tab.Library -> LibraryTab(
+                visible, albums, hiddenAlbums, trashedCount, trashSupported, onSource, onHide, onUnhide, navPad,
+            )
+        }
+
+        // Floating glass navigation bar
+        Row(
+            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp)
+                .clip(RoundedCornerShape(32.dp)).background(Color(0xCC141824)).border(1.dp, GlassBorder, RoundedCornerShape(32.dp))
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            for (t in Tab.entries) {
+                val on = t == tab
+                Row(
+                    Modifier.clip(RoundedCornerShape(26.dp)).background(if (on) Accent else Color.Transparent)
+                        .clickable { onTab(t) }.padding(horizontal = 18.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(t.icon, t.label, tint = if (on) AccentText else Color.White, modifier = Modifier.size(22.dp))
+                    if (on) Text(t.label, color = AccentText, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchTab(
+    visible: List<MediaItem>, albums: List<Album>, favorites: Set<Long>, columns: Int,
+    onOpen: (List<MediaItem>, Int) -> Unit, onColumns: (Int) -> Unit,
+    onSource: (String, Source) -> Unit, actions: GalleryActions, navPad: androidx.compose.ui.unit.Dp,
+) {
+    var query by remember { mutableStateOf("") }
+    val results = remember(visible, query, favorites) { searchItems(visible, query, favorites) }
+    val months = remember(visible) { visible.map { monthLabel(it.dateMs) }.distinct().take(12) }
+
+    @Composable
+    fun SearchField() {
+        Row(
+            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp)
+                .clip(RoundedCornerShape(28.dp)).background(GlassCard).border(1.dp, GlassBorder, RoundedCornerShape(28.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Search, null, tint = Muted)
+            Spacer(Modifier.width(10.dp))
+            BasicTextField(
+                value = query, onValueChange = { query = it }, singleLine = true,
+                textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                cursorBrush = SolidColor(Color.White), modifier = Modifier.weight(1f),
+                decorationBox = { inner ->
+                    if (query.isEmpty()) Text("Search your photos", color = Muted)
+                    inner()
+                },
+            )
+            if (query.isNotEmpty()) {
+                Icon(Icons.Default.Close, "Clear", tint = Muted, modifier = Modifier.clickable { query = "" })
+            }
+        }
+    }
+
+    if (query.isNotBlank()) {
+        MediaBrowser(
+            items = results, sort = SortSpec(), columns = columns, favorites = favorites, isTrash = false,
+            onOpen = onOpen, onColumns = onColumns, actions = actions, bottomPadding = navPad,
+            topBar = { SearchField() },
+        )
+    } else {
+        Column(Modifier.fillMaxSize()) {
+            SearchField()
+            Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("Categories", color = Color.White, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GlassChip("Videos", Icons.Default.Movie) { query = "video" }
+                    GlassChip("Screenshots", Icons.Default.Screenshot) { query = "screenshot" }
+                    GlassChip("Favorites", Icons.Default.Favorite) { query = "favorite" }
+                }
+                if (months.isNotEmpty()) {
+                    Text("Dates", color = Color.White, fontWeight = FontWeight.Bold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(months) { m -> GlassChip(m) { query = m } }
+                    }
+                }
+                if (albums.isNotEmpty()) {
+                    Text("Folders", color = Color.White, fontWeight = FontWeight.Bold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(albums, key = { it.id }) { a -> GlassChip(a.name) { onSource(a.name, Source.OfAlbum(a.id)) } }
+                    }
+                }
+            }
+        }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AlbumsScreen(
-    albums: List<Album>, hiddenAlbums: List<Album>, loaded: Boolean,
-    sort: SortSpec, columns: Int, trashSupported: Boolean,
-    onSort: (SortSpec) -> Unit, onColumns: (Int) -> Unit,
-    onAlbum: (Album) -> Unit, onAll: () -> Unit, onFavorites: () -> Unit, onTrash: () -> Unit, onSearch: () -> Unit,
-    onHide: (Album) -> Unit, onUnhide: (Album) -> Unit,
+private fun LibraryTab(
+    visible: List<MediaItem>, albums: List<Album>, hiddenAlbums: List<Album>, trashedCount: Int, trashSupported: Boolean,
+    onSource: (String, Source) -> Unit, onHide: (Album) -> Unit, onUnhide: (Album) -> Unit, navPad: androidx.compose.ui.unit.Dp,
 ) {
-    var menu by remember { mutableStateOf(false) }
-    var showHidden by remember { mutableStateOf(false) }
     var albumMenu by remember { mutableStateOf<Album?>(null) }
+    var showHidden by remember { mutableStateOf(false) }
+    val videos = remember(visible) { visible.count { it.isVideo } }
+    val screenshots = remember(visible) { visible.count { isScreenshot(it) } }
 
-    Column(Modifier.fillMaxSize().background(GlassBg)) {
-        TopBar("Txao Gallery", null) {
-            IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Search", tint = Color.White) }
-            Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More", tint = Color.White) }
-                SortColumnsMenu(menu, { menu = false }, sort, columns, onSort, onColumns)
+    Column(Modifier.fillMaxSize()) {
+        TopBar("Library", null) {
+            if (hiddenAlbums.isNotEmpty()) {
+                IconButton(onClick = { showHidden = true }) { Icon(Icons.Default.PhotoLibrary, "Hidden folders", tint = Color.White) }
             }
         }
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("All", { Icon(Icons.Default.PhotoLibrary, null, tint = Color.White) }, onAll)
-            Chip("Favorites", { Icon(Icons.Default.Favorite, null, tint = Color.White) }, onFavorites)
-            if (trashSupported) Chip("Trash", { Icon(Icons.Default.Delete, null, tint = Color.White) }, onTrash)
-            if (hiddenAlbums.isNotEmpty()) Chip("Hidden", { Icon(Icons.Default.Close, null, tint = Color.White) }, { showHidden = true })
-        }
-        if (albums.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(if (loaded) "No photos or videos found" else "Loading…", color = Muted)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = navPad),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            val tiles = buildList {
+                add(Triple("Favorites", Icons.Default.Favorite, Source.Favorites))
+                add(Triple("Videos ($videos)", Icons.Default.Movie, Source.Videos))
+                add(Triple("Screenshots ($screenshots)", Icons.Default.Screenshot, Source.Screenshots))
+                if (trashSupported) add(Triple("Trash ($trashedCount)", Icons.Default.Delete, Source.Trash))
             }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.navigationBarsPadding(),
-            ) {
-                items(albums, key = { it.id }) { album ->
-                    Column(
-                        Modifier.combinedClickable(onClick = { onAlbum(album) }, onLongClick = { albumMenu = album }),
-                    ) {
-                        Box {
-                            Thumb(album.cover, 400, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)))
-                            DropdownMenu(albumMenu?.id == album.id, { albumMenu = null }) {
-                                DropdownMenuItem(text = { Text("Hide album") }, onClick = { onHide(album); albumMenu = null })
-                            }
+            items(tiles, key = { it.first }) { (label, icon, source) ->
+                Row(
+                    Modifier.fillMaxWidth().clip(GlassShape).background(GlassCard).border(1.dp, GlassBorder, GlassShape)
+                        .clickable { onSource(label.substringBefore(" ("), source) }.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(icon, null, tint = Accent)
+                    Spacer(Modifier.width(10.dp))
+                    Text(label, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text("Folders on device", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+            }
+            items(albums, key = { "a${it.id}" }) { album ->
+                Column(Modifier.combinedClickable(onClick = { onSource(album.name, Source.OfAlbum(album.id)) }, onLongClick = { albumMenu = album })) {
+                    Box {
+                        Thumb(album.cover, 400, Modifier.fillMaxWidth().aspectRatio(1f).clip(GlassShape))
+                        DropdownMenu(albumMenu?.id == album.id, { albumMenu = null }) {
+                            DropdownMenuItem(text = { Text("Hide folder") }, onClick = { onHide(album); albumMenu = null })
                         }
-                        Text(album.name, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                        Text("${album.items.size} items", color = Muted, fontSize = 12.sp)
                     }
+                    Text(album.name, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                    Text("${album.items.size} items", color = Muted, fontSize = 12.sp)
                 }
             }
         }
@@ -184,7 +423,7 @@ fun AlbumsScreen(
         AlertDialog(
             onDismissRequest = { showHidden = false },
             confirmButton = { TextButton({ showHidden = false }) { Text("Done") } },
-            title = { Text("Hidden albums") },
+            title = { Text("Hidden folders") },
             text = {
                 Column {
                     hiddenAlbums.forEach { a ->
@@ -199,150 +438,16 @@ fun AlbumsScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GridScreen(
-    title: String, source: Source, base: List<MediaItem>, sort: SortSpec, columns: Int,
-    favorites: Set<Long>, onBack: () -> Unit,
-    onOpen: (List<MediaItem>, Int) -> Unit,
-    onColumns: (Int) -> Unit, onSort: (SortSpec) -> Unit,
-    actions: GalleryActions,
+    title: String, base: List<MediaItem>, source: Source, sort: SortSpec, columns: Int,
+    favorites: Set<Long>, onBack: () -> Unit, onOpen: (List<MediaItem>, Int) -> Unit,
+    onColumns: (Int) -> Unit, onSort: (SortSpec) -> Unit, actions: GalleryActions,
 ) {
-    val isTrash = source == Source.Trash
-    var query by remember { mutableStateOf("") }
-    var menu by remember { mutableStateOf(false) }
-    var selected by remember { mutableStateOf<Set<Long>>(emptySet()) }
-    var confirm by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val ctx = LocalContext.current
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(source) { if (source == Source.Search) focus.requestFocus() }
-
-    val items = remember(base, sort, query, source) {
-        val filtered = if (source == Source.Search) searchItems(base, query) else base
-        sortItems(filtered, sort)
-    }
-    val indexOf = remember(items) { items.withIndex().associate { it.value.id to it.index } }
-    val grouped = source != Source.Search && sort.field == SortField.Date
-    val sections = remember(items, grouped) {
-        if (grouped) groupByDay(items) else listOf("" to items)
-    }
-    val selecting = selected.isNotEmpty()
-    val chosen = items.filter { it.id in selected }
-    val px = (1080 / columns).coerceAtLeast(160)
-
-    fun afterAction() { selected = emptySet() }
-
-    Column(Modifier.fillMaxSize().background(GlassBg)) {
-        if (selecting) {
-            TopBar("${selected.size} selected", { selected = emptySet() }) {
-                IconButton(onClick = {
-                    val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                        type = "*/*"
-                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(chosen.map { it.uri }))
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    ctx.startActivity(Intent.createChooser(send, null))
-                }) { Icon(Icons.Default.Share, "Share", tint = Color.White) }
-                if (isTrash) {
-                    IconButton(onClick = { actions.trash(chosen, false, ::afterAction) }) {
-                        Icon(Icons.Default.Restore, "Restore", tint = Color.White)
-                    }
-                    IconButton(onClick = { actions.deleteForever(chosen, ::afterAction) }) {
-                        Icon(Icons.Default.DeleteForever, "Delete forever", tint = Color.White)
-                    }
-                } else {
-                    IconButton(onClick = {
-                        val run = { actions.trash(chosen, true, ::afterAction) }
-                        if (android.os.Build.VERSION.SDK_INT >= 30) run() else confirm = run
-                    }) { Icon(Icons.Default.Delete, "Delete", tint = Color.White) }
-                }
-            }
-        } else if (source == Source.Search) {
-            Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
-                BasicTextField(
-                    value = query, onValueChange = { query = it }, singleLine = true,
-                    textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
-                    cursorBrush = SolidColor(Color.White),
-                    modifier = Modifier.weight(1f).focusRequester(focus),
-                    decorationBox = { inner ->
-                        if (query.isEmpty()) Text("Search by file or album name", color = Muted)
-                        inner()
-                    },
-                )
-            }
-        } else {
-            TopBar(title, onBack) {
-                Box {
-                    IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "More", tint = Color.White) }
-                    SortColumnsMenu(menu, { menu = false }, sort, columns, onSort, onColumns)
-                }
-            }
-        }
-
-        if (items.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    when {
-                        source == Source.Search && query.isBlank() -> "Type to search"
-                        source == Source.Favorites -> "No favorites yet"
-                        isTrash -> "Trash is empty"
-                        else -> "Nothing here"
-                    },
-                    color = Muted,
-                )
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                contentPadding = PaddingValues(bottom = 24.dp),
-                modifier = Modifier.navigationBarsPadding(),
-            ) {
-                sections.forEach { (label, list) ->
-                    if (label.isNotEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "h-$label") {
-                            Text(
-                                label, color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 6.dp),
-                            )
-                        }
-                    }
-                    items(list, key = { it.id }) { item ->
-                        Thumb(
-                            item, px,
-                            Modifier.aspectRatio(1f).combinedClickable(
-                                onClick = {
-                                    if (selecting) {
-                                        selected = if (item.id in selected) selected - item.id else selected + item.id
-                                    } else if (isTrash) {
-                                        selected = setOf(item.id)
-                                    } else {
-                                        onOpen(items, indexOf.getValue(item.id))
-                                    }
-                                },
-                                onLongClick = { selected = selected + item.id },
-                            ),
-                            favorite = item.id in favorites,
-                            selected = if (selecting) item.id in selected else null,
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    confirm?.let { run ->
-        AlertDialog(
-            onDismissRequest = { confirm = null },
-            title = { Text("Delete ${chosen.size} item(s)?") },
-            text = { Text("This permanently deletes the files.") },
-            confirmButton = { TextButton({ confirm = null; run() }) { Text("Delete") } },
-            dismissButton = { TextButton({ confirm = null }) { Text("Cancel") } },
-        )
-    }
+    val items = remember(base, sort) { sortItems(base, sort) }
+    MediaBrowser(
+        items = items, sort = sort, columns = columns, favorites = favorites, isTrash = source == Source.Trash,
+        onOpen = onOpen, onColumns = onColumns, actions = actions,
+        topBar = { TopBar(title, onBack) { ColumnsSortMenu(sort, columns, onSort, onColumns) } },
+    )
 }
