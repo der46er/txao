@@ -1,0 +1,10 @@
+{
+  "id": "files",
+  "name": "Txao Files",
+  "package": "com.txao.files",
+  "version": "1.1.5",
+  "status": "available",
+  "description": "File manager.",
+  "file": "downloads/txao-files-1.1.5.apk",
+  "accent": "#54a0ff"
+}

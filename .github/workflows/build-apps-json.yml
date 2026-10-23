@@ -1,0 +1,19 @@
+name: Build workspace/apps.json
+on:
+  push:
+    branches: [main]
+    paths: ["workspace/apps.d/**", "workspace/build-apps.py"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 workspace/build-apps.py
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workspace/apps.json
+          git diff --cached --quiet || (git commit -m "Regenerate workspace/apps.json" && git push)

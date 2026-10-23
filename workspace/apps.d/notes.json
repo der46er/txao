@@ -1,0 +1,10 @@
+{
+  "id": "notes",
+  "name": "Txao Notes",
+  "package": "com.txao.notes",
+  "version": "1.0.2",
+  "status": "available",
+  "description": "Notes with checklists, labels, reminders and optional end-to-end encrypted sync to your own server.",
+  "file": "downloads/txao-notes-1.0.2.apk",
+  "accent": "#feca57"
+}
