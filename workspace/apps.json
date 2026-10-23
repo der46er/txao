@@ -36,7 +36,8 @@
       "package": "com.txao.authenticator",
       "status": "planned",
       "description": "Two-factor codes (TOTP, HOTP, Steam) with search, QR scanning, encrypted backup and app lock.",
-      "accent": "#2ed8a3"
+      "accent": "#2ed8a3",
+      "icon": "icons/authenticator.svg"
     },
     {
       "id": "calendar",
@@ -44,7 +45,8 @@
       "package": "com.txao.calendar",
       "status": "planned",
       "description": "Calendar and events.",
-      "accent": "#5f7cff"
+      "accent": "#5f7cff",
+      "icon": "icons/calendar.svg"
     },
     {
       "id": "gallery",
@@ -61,7 +63,8 @@
       "package": "com.txao.music",
       "status": "planned",
       "description": "Offline music player with background playback and sleep timer.",
-      "accent": "#f368e0"
+      "accent": "#f368e0",
+      "icon": "icons/music.svg"
     },
     {
       "id": "phone",
@@ -78,7 +81,8 @@
       "package": "com.txao.sms",
       "status": "planned",
       "description": "SMS messaging.",
-      "accent": "#a78bfa"
+      "accent": "#a78bfa",
+      "icon": "icons/sms.svg"
     }
   ]
 }

@@ -4,5 +4,6 @@
   "package": "com.txao.sms",
   "status": "planned",
   "description": "SMS messaging.",
-  "accent": "#a78bfa"
+  "accent": "#a78bfa",
+  "icon": "icons/sms.svg"
 }

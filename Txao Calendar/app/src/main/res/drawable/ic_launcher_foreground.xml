@@ -2,30 +2,30 @@
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <group android:scaleX="0.7" android:scaleY="0.7" android:pivotX="54" android:pivotY="54">
-        <!-- frosted glass calendar page -->
-        <path android:pathData="M38,20h32a14,14 0 0,1 14,14v40a14,14 0 0,1 -14,14h-32a14,14 0 0,1 -14,-14v-40a14,14 0 0,1 14,-14z"
-            android:strokeWidth="1" android:strokeColor="#80FFFFFF">
+    <group android:scaleX="0.74" android:scaleY="0.74" android:pivotX="54" android:pivotY="54">
+        <path android:pathData="M36,24h36a14,14 0 0 1 14,14v34a14,14 0 0 1 -14,14h-36a14,14 0 0 1 -14,-14v-34a14,14 0 0 1 14,-14z" android:strokeWidth="1" android:strokeColor="#80FFFFFF">
             <aapt:attr name="android:fillColor">
-                <gradient android:type="linear" android:startX="0" android:startY="20" android:endX="0" android:endY="88">
+                <gradient android:type="linear" android:startX="0" android:startY="24" android:endX="0" android:endY="86">
                     <item android:offset="0" android:color="#55FFFFFF" />
                     <item android:offset="1" android:color="#14FFFFFF" />
                 </gradient>
             </aapt:attr>
         </path>
-        <!-- header rule and binder rings -->
-        <path android:pathData="M24,42h60" android:strokeWidth="3" android:strokeColor="#80FFFFFF" />
-        <path android:pathData="M40,14v14M68,14v14" android:strokeWidth="5" android:strokeColor="#F2FFFFFF" android:strokeLineCap="round" />
-        <!-- day dots -->
-        <path android:pathData="M38,58h0.1M54,58h0.1M70,58h0.1M38,72h0.1M54,72h0.1" android:strokeWidth="6" android:strokeColor="#F2FFFFFF" android:strokeLineCap="round" />
-        <!-- lavender today marker -->
-        <path android:pathData="M70,72m-8,0a8,8 0 1,0 16,0a8,8 0 1,0 -16,0">
+        <path android:pathData="M22,44h64" android:strokeWidth="1.6" android:strokeColor="#F2FFFFFF" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M38,17v14M70,17v14" android:strokeWidth="4.5" android:strokeColor="#F2FFFFFF" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M34.4,57a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0z" android:fillColor="#F2FFFFFF" />
+        <path android:pathData="M50.4,57a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0z" android:fillColor="#F2FFFFFF" />
+        <path android:pathData="M66.4,57a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0z" android:fillColor="#F2FFFFFF" />
+        <path android:pathData="M34.4,71a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0z" android:fillColor="#F2FFFFFF" />
+        <path android:pathData="M50.4,71a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0z" android:fillColor="#F2FFFFFF" />
+        <path android:pathData="M61,78a13,13 0 1,0 26,0a13,13 0 1,0 -26,0z" android:strokeWidth="1" android:strokeColor="#99FFFFFF">
             <aapt:attr name="android:fillColor">
-                <gradient android:type="linear" android:startX="0" android:startY="64" android:endX="0" android:endY="80">
+                <gradient android:type="linear" android:startX="0" android:startY="65" android:endX="0" android:endY="91">
                     <item android:offset="0" android:color="#FFF1E8FF" />
                     <item android:offset="1" android:color="#FFCDB8FF" />
                 </gradient>
             </aapt:attr>
         </path>
+        <path android:pathData="M69.8,78a4.2,4.2 0 1,0 8.4,0a4.2,4.2 0 1,0 -8.4,0z" android:fillColor="#FF2E1B5C" />
     </group>
 </vector>

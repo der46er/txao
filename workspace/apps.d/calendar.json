@@ -4,5 +4,6 @@
   "package": "com.txao.calendar",
   "status": "planned",
   "description": "Calendar and events.",
-  "accent": "#5f7cff"
+  "accent": "#5f7cff",
+  "icon": "icons/calendar.svg"
 }

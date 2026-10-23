@@ -4,5 +4,6 @@
   "package": "com.txao.authenticator",
   "status": "planned",
   "description": "Two-factor codes (TOTP, HOTP, Steam) with search, QR scanning, encrypted backup and app lock.",
-  "accent": "#2ed8a3"
+  "accent": "#2ed8a3",
+  "icon": "icons/authenticator.svg"
 }
