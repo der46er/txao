@@ -40,7 +40,7 @@ class Prefs(private val context: Context) {
     fun hasCustomLayout(path: String) = sp.contains(LayoutRules.key(path))
 
     var showHidden: Boolean
-        get() = sp.getBoolean("show_hidden", false)
+        get() = sp.getBoolean("show_hidden", true)
         set(v) = sp.edit().putBoolean("show_hidden", v).apply()
 
     var sortField: SortField

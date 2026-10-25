@@ -7,6 +7,11 @@ data class Release(val version: String, val notes: List<String>)
 /** Release notes, newest first. Add an entry here with every version bump. */
 object Changelog {
     val releases = listOf(
+        Release("1.3.4", listOf(
+            "Hidden files (names starting with a dot) are now shown by default, and folders tell you how many are hidden if you turn that off",
+            "Settings has a button that opens the All files access screen",
+            "Also declares the classic storage permissions some phones check",
+        )),
         Release("1.3.3", listOf(
             "Recents now also scans the real folders, so files that other apps never registered show up too",
             "Folders Android keeps closed to apps (like Android/data) say so instead of looking empty",
