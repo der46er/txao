@@ -477,11 +477,17 @@ private fun FolderContent(
         }
     }
     val canMore = shown < all.size && loaded.size >= shown
+    Column(Modifier.fillMaxSize()) {
+    Text(
+        itemsLabel(all.size) + if (hiddenCount > 0) " · $hiddenCount hidden" else "",
+        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+    )
     if (layout == FolderLayout.Grid) {
         val state = rememberLazyGridState()
-        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 } } }
+        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 || !state.canScrollForward } } }
         LaunchedEffect(nearEnd, canMore, loaded.size) { if (nearEnd && canMore) shown += PAGE }
-        LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
+        LazyVerticalGrid(GridCells.Fixed(4), Modifier.weight(1f).fillMaxWidth(), state = state, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
             items(loaded, key = { it.file.path }) { e ->
                 GridTile(e, e.file.path in selected, Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
             }
@@ -490,15 +496,16 @@ private fun FolderContent(
         }
     } else {
         val state = rememberLazyListState()
-        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 } } }
+        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 || !state.canScrollForward } } }
         LaunchedEffect(nearEnd, canMore, loaded.size) { if (nearEnd && canMore) shown += PAGE }
-        LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(vertical = 6.dp)) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = state, contentPadding = PaddingValues(vertical = 6.dp)) {
             items(loaded, key = { it.file.path }) { e ->
                 ListRow(e, e.file.path in selected, subtitleParent = false, modifier = Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
             }
             if (hiddenCount > 0) item { HiddenNote(hiddenCount, onShowHidden) }
             item { Spacer(Modifier.height(100.dp)) }
         }
+    }
     }
 }
 

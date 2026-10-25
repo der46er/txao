@@ -44,11 +44,11 @@ class Prefs(private val context: Context) {
         set(v) = sp.edit().putBoolean("show_hidden", v).apply()
 
     var sortField: SortField
-        get() = SortField.entries.getOrElse(sp.getInt("sort_field", 0)) { SortField.Name }
+        get() = SortField.entries.getOrElse(sp.getInt("sort_field", SortField.Date.ordinal)) { SortField.Date }
         set(v) = sp.edit().putInt("sort_field", v.ordinal).apply()
 
     var sortAscending: Boolean
-        get() = sp.getBoolean("sort_asc", true)
+        get() = sp.getBoolean("sort_asc", false)
         set(v) = sp.edit().putBoolean("sort_asc", v).apply()
 
     /** Length of the fade between folders and layouts, in milliseconds (0.1 s to 0.9 s). */

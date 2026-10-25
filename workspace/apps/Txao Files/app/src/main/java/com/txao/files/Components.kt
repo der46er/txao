@@ -5,12 +5,14 @@ import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -25,6 +27,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -77,6 +81,15 @@ fun FileGlyph(file: File, isDir: Boolean, size: Dp, modifier: Modifier = Modifie
         modifier.size(size).clip(RoundedCornerShape(10.dp)).background(Color(0x33CDB8FF)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(iconFor(kind), null, Modifier.size(size * 0.55f), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        val tint = MaterialTheme.colorScheme.onSurfaceVariant
+        val ext = file.extension.uppercase().take(4)
+        if (ext.isNotEmpty() && kind != Kind.Apk && kind != Kind.Archive) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(iconFor(kind), null, Modifier.size(size * 0.42f), tint = tint)
+                Text(ext, fontSize = (size.value * 0.2f).coerceAtLeast(8f).sp, color = tint, maxLines = 1, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Icon(iconFor(kind), null, Modifier.size(size * 0.55f), tint = tint)
+        }
     }
 }
