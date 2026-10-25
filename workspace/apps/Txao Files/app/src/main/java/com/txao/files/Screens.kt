@@ -13,8 +13,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -29,6 +27,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -132,6 +131,9 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     var sortAsc by remember { mutableStateOf(prefs.sortAscending) }
     var dialog by remember { mutableStateOf<Dialog?>(null) }
     var unlocked by remember { mutableStateOf(false) }
+    var fadeMs by remember { mutableIntStateOf(prefs.fadeMs) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showNews by remember { mutableStateOf(prefs.lastSeenVersion != appVersion(ctx)) }
     val vaultDir = remember { File(ctx.filesDir, "locked").apply { mkdirs() } }
     val auth = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         if (r.resultCode == Activity.RESULT_OK) unlocked = true
@@ -155,7 +157,8 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     }
     fun closeSearch() { searching = false; query = "" }
 
-    BackHandler(enabled = selecting) { selected = emptySet() }
+    BackHandler(enabled = showSettings) { showSettings = false }
+    BackHandler(enabled = !showSettings && selecting) { selected = emptySet() }
     BackHandler(enabled = !selecting && searching) { closeSearch() }
     BackHandler(enabled = !selecting && !searching && tab != HomeTab.Files) { tab = HomeTab.Files }
     BackHandler(enabled = !selecting && !searching && tab == HomeTab.Files && path != vol.root.path) {
@@ -207,6 +210,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                 hasBackground = hasBackground,
                                 onChooseBackground = chooseBackground,
                                 onClearBackground = clearBackground,
+                                onSettings = { showSettings = true },
                             )
                         }
                     }
@@ -233,15 +237,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                         AnimatedContent(
                             targetState = path to layout,
                             modifier = Modifier.weight(1f).fillMaxWidth(),
-                            transitionSpec = {
-                                if (targetState.first != initialState.first) {
-                                    val deeper = targetState.first.length > initialState.first.length
-                                    (slideInHorizontally(tween(280)) { if (deeper) it / 6 else -it / 6 } + fadeIn(tween(260))) togetherWith
-                                        (slideOutHorizontally(tween(200)) { if (deeper) -it / 6 else it / 6 } + fadeOut(tween(160)))
-                                } else {
-                                    fadeIn(tween(260)) togetherWith fadeOut(tween(160))
-                                }
-                            },
+                            transitionSpec = { fadeIn(tween(fadeMs)) togetherWith fadeOut(tween(fadeMs)) },
                             label = "folder",
                         ) { (p, l) ->
                             FolderContent(
@@ -305,6 +301,18 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                 }
             }
         }
+    }
+
+    if (showSettings) {
+        SettingsScreen(
+            prefs, fadeMs, { fadeMs = it; prefs.fadeMs = it },
+            showHidden, { showHidden = it; prefs.showHidden = it },
+            hasBackground, chooseBackground, clearBackground,
+            onClose = { showSettings = false },
+        )
+    }
+    if (showNews) {
+        WhatsNewDialog(Changelog.releases.take(3)) { showNews = false; prefs.lastSeenVersion = appVersion(ctx) }
     }
 
     when (val d = dialog) {
@@ -444,7 +452,7 @@ private fun RowScope.BrowseBar(
     sortField: SortField, sortAsc: Boolean, onSort: (SortField, Boolean) -> Unit,
     showHidden: Boolean, onShowHidden: (Boolean) -> Unit,
     hasCustomLayout: Boolean, onResetLayout: () -> Unit,
-    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit,
+    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit, onSettings: () -> Unit,
 ) {
     var sortMenu by remember { mutableStateOf(false) }
     var moreMenu by remember { mutableStateOf(false) }
@@ -497,6 +505,7 @@ private fun RowScope.BrowseBar(
             if (hasCustomLayout) DropdownMenuItem({ Text("Use default layout here") }, { onResetLayout(); moreMenu = false })
             DropdownMenuItem({ Text("Choose background image") }, { onChooseBackground(); moreMenu = false })
             if (hasBackground) DropdownMenuItem({ Text("Remove background image") }, { onClearBackground(); moreMenu = false })
+            DropdownMenuItem({ Text("Settings") }, { onSettings(); moreMenu = false })
         }
     }
 }
@@ -668,5 +677,72 @@ private fun NameDialog(title: String, initial: String, confirm: String, onDismis
         text = { OutlinedTextField(text, { text = it }, singleLine = true) },
         confirmButton = { TextButton({ onOk(text.trim()) }, enabled = valid) { Text(confirm) } },
         dismissButton = { TextButton(onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun SettingsScreen(
+    prefs: Prefs, fadeMs: Int, onFade: (Int) -> Unit, showHidden: Boolean, onHidden: (Boolean) -> Unit,
+    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit, onClose: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    var news by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(GlassBg).systemBarsPadding().verticalScroll(rememberScrollState())) {
+        Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClose) { Icon(Icons.Filled.ArrowBack, "Back", tint = Color.White) }
+            Text("Settings", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        }
+        SettingsCard("Appearance") {
+            Text("Fade between screens: ${"%.1f".format(Locale.US, fadeMs / 1000f)} s", fontSize = 15.sp)
+            Slider(
+                value = fadeMs / 1000f, onValueChange = { onFade((Math.round(it * 10) * 100).coerceIn(100, 900)) },
+                valueRange = 0.1f..0.9f, steps = 7,
+                colors = SliderDefaults.colors(thumbColor = Accent, activeTrackColor = Accent),
+            )
+            Spacer(Modifier.height(4.dp))
+            Row {
+                TextButton(onChooseBackground) { Text("Choose background image") }
+                if (hasBackground) TextButton(onClearBackground) { Text("Remove") }
+            }
+        }
+        SettingsCard("Files") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Show hidden files", Modifier.weight(1f), fontSize = 15.sp)
+                Switch(showHidden, onHidden)
+            }
+        }
+        SettingsCard("About") {
+            Text("Txao Files ${appVersion(ctx)}", fontSize = 15.sp)
+            Text("No analytics, no ads, no accounts, no network access.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton({ news = true }) { Text("What's new") }
+        }
+    }
+    if (news) WhatsNewDialog(Changelog.releases) { news = false }
+}
+
+@Composable
+private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 10.dp).clip(RoundedCornerShape(20.dp)).background(BarSurface).padding(16.dp)) {
+        Text(title, fontSize = 13.sp, color = Accent, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(8.dp))
+        content()
+    }
+}
+
+@Composable
+private fun WhatsNewDialog(releases: List<Release>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = { Text("What's new") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                for (r in releases) {
+                    Text("Version ${r.version}", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+                    for (n in r.notes) Text("• $n", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        confirmButton = { TextButton(onDismiss) { Text("OK") } },
     )
 }
