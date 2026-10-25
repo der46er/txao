@@ -11,6 +11,7 @@ import androidx.media3.session.MediaSessionService
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         val player = ExoPlayer.Builder(this)
@@ -23,7 +24,7 @@ class PlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
-        session = MediaSession.Builder(this, player).build()
+        session = MediaSession.Builder(this, player).setBitmapLoader(ArtBitmapLoader(this)).build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session

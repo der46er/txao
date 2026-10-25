@@ -9,6 +9,9 @@ data class Track(
     val albumId: Long,
     val durationMs: Long,
     val uri: String,
+    val trackNo: Int = 0,
+    val year: Int = 0,
+    val mime: String = "",
 )
 
 data class Album(val id: Long, val name: String, val artist: String, val tracks: List<Track>)
@@ -38,7 +41,7 @@ object Library {
     fun albums(tracks: List<Track>): List<Album> =
         tracks.groupBy { it.albumId to it.album }
             .map { (key, list) ->
-                Album(key.first, key.second, list.map { it.artist }.distinct().singleOrNull() ?: "Various artists", list)
+                Album(key.first, key.second, list.map { it.artist }.distinct().singleOrNull() ?: "Various artists", list.sortedWith(compareBy({ it.trackNo }, { it.title.lowercase() })))
             }
             .sortedBy { it.name.lowercase() }
 

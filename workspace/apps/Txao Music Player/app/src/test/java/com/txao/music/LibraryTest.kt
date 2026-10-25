@@ -28,6 +28,14 @@ class LibraryTest {
         assertTrue(Library.matches(tracks[0], "  "))
     }
 
+    @Test fun albumTracksFollowTrackNumber() {
+        val list = listOf(
+            Track(1, "B", "X", "A", 1, 1000, "u1", trackNo = 2),
+            Track(2, "A", "X", "A", 1, 1000, "u2", trackNo = 1),
+        )
+        assertEquals(listOf("A", "B"), Library.albums(list)[0].tracks.map { it.title })
+    }
+
     @Test fun groupsAlbumsAndArtistsSorted() {
         val albums = Library.albums(tracks)
         assertEquals(listOf("First", "Second"), albums.map { it.name })

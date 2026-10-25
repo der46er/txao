@@ -18,8 +18,8 @@ android {
         applicationId = "com.txao.music"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -63,6 +63,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-session:1.8.0")
+    implementation("com.google.guava:guava:33.4.8-android")
 
     testImplementation("junit:junit:4.13.2")
 }
