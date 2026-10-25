@@ -13,8 +13,8 @@ android {
         applicationId = "com.txao.files"
         minSdk = 30
         targetSdk = 37
-        versionCode = 17
-        versionName = "1.3.2"
+        versionCode = 18
+        versionName = "1.3.3"
     }
 
     val keystoreProps = Properties().apply {

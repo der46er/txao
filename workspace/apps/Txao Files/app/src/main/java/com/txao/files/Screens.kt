@@ -450,7 +450,10 @@ private fun FolderContent(
     LaunchedEffect(all) { onPaths(all.map { it.path }) }
     if (all.isEmpty()) {
         Box(Modifier.fillMaxSize().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {
-            Text("This folder is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (dir.list() == null) "Android does not let apps read this folder" else "This folder is empty",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+            )
         }
         return
     }
@@ -856,6 +859,7 @@ private fun SettingsScreen(
         }
         SettingsCard("About") {
             Text("Txao Files ${appVersion(ctx)}", fontSize = 15.sp)
+            Text("All files access: ${if (MainActivity.hasAccess()) "allowed" else "not allowed"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("No analytics, no ads, no accounts, no network access.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton({ news = true }) { Text("What's new") }
         }
@@ -898,10 +902,16 @@ private fun ColumnScope.RecentsTab(vols: List<Volume>, showHidden: Boolean, refr
     var offset by remember { mutableIntStateOf(0) }
     var end by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
+    // The media index is quick but misses files that no app has registered, so a background scan of
+    // the real folders follows; once it finishes it replaces the index results.
+    var walked by remember { mutableStateOf<List<Entry>?>(null) }
+    var shown by remember { mutableIntStateOf(20) }
     val listState = rememberLazyListState()
 
     // Loads 20 files at a time, so the list shows up at once and fills in as you scroll.
     fun more() {
+        val w = walked
+        if (w != null) { if (shown < w.size) shown += 20; return }
         if (loading || end) return
         loading = true
         val from = offset
@@ -914,20 +924,32 @@ private fun ColumnScope.RecentsTab(vols: List<Volume>, showHidden: Boolean, refr
             loading = false
         }
     }
-    LaunchedEffect(showHidden, refresh) { items.clear(); offset = 0; end = false; loading = false; more() }
+    LaunchedEffect(showHidden, refresh) {
+        items.clear(); offset = 0; end = false; loading = false; walked = null; shown = 20
+        more()
+        val result = withContext(Dispatchers.IO) { recentFiles(Environment.getExternalStorageDirectory(), showHidden, 200) }
+        shown = maxOf(20, items.size)
+        walked = result
+    }
     val nearEnd by remember {
         derivedStateOf {
             val info = listState.layoutInfo
             (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - 4
         }
     }
-    LaunchedEffect(nearEnd, items.size, loading) { if (nearEnd) more() }
+    LaunchedEffect(nearEnd, items.size, loading, shown) { if (nearEnd) more() }
+    val rows = walked?.take(shown) ?: items.toList()
 
     LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)) {
         items(vols, key = { "vol:" + it.root.path }) { v -> StorageCard(v) { onVolume(v) } }
         item { Text("Recent files", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) }
-        items(items, key = { it.file.path }) { e -> ListRow(e, false, subtitleParent = true, onClick = { onOpen(e) }, onLong = {}) }
-        if (loading) item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp), color = Accent, strokeWidth = 2.dp) } }
+        items(rows, key = { it.file.path }) { e -> ListRow(e, false, subtitleParent = true, onClick = { onOpen(e) }, onLong = {}) }
+        if (loading || walked == null) item {
+            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(20.dp), color = Accent, strokeWidth = 2.dp)
+                if (walked == null) Text("  Checking all folders…", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
 
