@@ -5,15 +5,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 
 val Ink = Color(0xFF0B0E14)
@@ -22,13 +25,10 @@ val GlassFill = Color(0x14FFFFFF)
 val GlassStroke = Color(0x1FFFFFFF)
 val GlassBorder = BorderStroke(1.dp, GlassStroke)
 
-/** Event colours, chosen by index so they survive a palette tweak. */
-val EventColors = listOf(
-    Color(0xFFB79CFF), Color(0xFF8FA3D6), Color(0xFF7FD6C2), Color(0xFFE6C77A),
-    Color(0xFFF0A07C), Color(0xFFD7A6C6), Color(0xFF9AD27A), Color(0xFFE88A9A),
-)
+val NowRed = Color(0xFFEA4335)
 
-fun eventColor(i: Int): Color = EventColors[Math.floorMod(i, EventColors.size)]
+/** Readable text colour on top of an event colour. */
+fun onEventColor(argb: Int): Color = if (Color(argb).luminance() > 0.55f) Color(0xFF1B1B1F) else Color.White
 
 @Composable
 fun TxaoTheme(content: @Composable () -> Unit) {
@@ -37,9 +37,10 @@ fun TxaoTheme(content: @Composable () -> Unit) {
             primary = Lavender, onPrimary = Color(0xFF2E1B5C), background = Ink, surface = Ink,
             onBackground = Color(0xFFEDEBF5), onSurface = Color(0xFFEDEBF5),
             surfaceContainer = Color(0xFF171B26), surfaceContainerHigh = Color(0xFF1D2230),
+            surfaceContainerHighest = Color(0xFF262B3A), outlineVariant = Color(0xFF2E3342),
             error = Color(0xFFFF8A9B),
         ),
-        content = content,
+        content = { CompositionLocalProvider(LocalContentColor provides Color(0xFFEDEBF5), content = content) },
     )
 }
 
