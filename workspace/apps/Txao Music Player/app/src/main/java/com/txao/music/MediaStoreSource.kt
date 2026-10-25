@@ -5,9 +5,6 @@ import android.content.Context
 import android.provider.MediaStore
 
 object MediaStoreSource {
-    fun albumArtUri(albumId: Long) =
-        ContentUris.withAppendedId(android.net.Uri.parse("content://media/external/audio/albumart"), albumId)
-
     fun loadTracks(context: Context): List<Track> {
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(
@@ -17,6 +14,9 @@ object MediaStoreSource {
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.TRACK,
+            MediaStore.Audio.Media.MIME_TYPE,
+            MediaStore.Audio.Media.YEAR,
         )
         val out = ArrayList<Track>()
         context.contentResolver.query(
@@ -30,6 +30,9 @@ object MediaStoreSource {
             val album = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val albumId = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val duration = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val track = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
+            val mime = c.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
+            val year = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
             while (c.moveToNext()) {
                 val trackId = c.getLong(id)
                 out += Track(
@@ -40,6 +43,9 @@ object MediaStoreSource {
                     albumId = c.getLong(albumId),
                     durationMs = c.getLong(duration),
                     uri = ContentUris.withAppendedId(collection, trackId).toString(),
+                    trackNo = c.getInt(track) % 1000, // MediaStore stores disc*1000 + track
+                    year = c.getInt(year),
+                    mime = c.getString(mime).orEmpty(),
                 )
             }
         }
