@@ -27,6 +27,7 @@ data class ContactDetails(
     val address: String = "",
     val company: String = "",
     val birthday: String = "",
+    val ims: List<ImEntry> = emptyList(),
     val notes: String = "",
     val starred: Boolean = false,
     val photoUri: String? = null,
@@ -69,10 +70,10 @@ object ContactsRepo {
                 if (it.moveToFirst()) { found = true; d = d.copy(name = it.getString(0).orEmpty(), starred = it.getInt(1) == 1, photoUri = it.getString(2)) }
             }
             if (!found) return null
-            val phones = ArrayList<Labeled>(); val emails = ArrayList<Labeled>()
+            val phones = ArrayList<Labeled>(); val emails = ArrayList<Labeled>(); val ims = ArrayList<ImEntry>()
             cr.query(
                 D.CONTENT_URI,
-                arrayOf(D.RAW_CONTACT_ID, D.MIMETYPE, D.DATA1, D.DATA2, D.DATA3, D.IS_PRIMARY, D.DATA4, D.DATA5),
+                arrayOf(D.RAW_CONTACT_ID, D.MIMETYPE, D.DATA1, D.DATA2, D.DATA3, D.IS_PRIMARY, D.DATA4, D.DATA5, D.DATA6),
                 "${D.CONTACT_ID}=?", arrayOf(contactId.toString()), null,
             )?.use { c ->
                 while (c.moveToNext()) {
@@ -85,12 +86,16 @@ object ContactsRepo {
                         K.Email.CONTENT_ITEM_TYPE -> if (v.isNotBlank()) emails += Labeled(type, label, v, primary)
                         K.StructuredPostal.CONTENT_ITEM_TYPE -> if (d.address.isEmpty()) d = d.copy(address = v)
                         K.Organization.CONTENT_ITEM_TYPE -> if (d.company.isEmpty()) d = d.copy(company = listOf(v, c.getString(6).orEmpty()).filter { it.isNotBlank() }.joinToString(" · "))
+                        K.Im.CONTENT_ITEM_TYPE -> if (v.isNotBlank()) {
+                            val name = if (c.getInt(7) == K.Im.PROTOCOL_CUSTOM) c.getString(8).orEmpty() else imProtocolName(c.getInt(7))
+                            ims += ImEntry(name, v)
+                        }
                         K.Note.CONTENT_ITEM_TYPE -> if (d.notes.isEmpty()) d = d.copy(notes = v)
                         K.Event.CONTENT_ITEM_TYPE -> if (type == K.Event.TYPE_BIRTHDAY && d.birthday.isEmpty()) d = d.copy(birthday = v)
                     }
                 }
             }
-            return d.copy(phones = phones.distinctBy { PhoneUtil.key(it.value) }, emails = emails)
+            return d.copy(phones = phones.distinctBy { PhoneUtil.key(it.value) }, emails = emails, ims = ims)
         } catch (_: SecurityException) { return null }
     }
 
@@ -107,8 +112,14 @@ object ContactsRepo {
 
     private val MANAGED = listOf(
         K.StructuredName.CONTENT_ITEM_TYPE, K.Phone.CONTENT_ITEM_TYPE, K.Email.CONTENT_ITEM_TYPE, K.StructuredPostal.CONTENT_ITEM_TYPE,
-        K.Organization.CONTENT_ITEM_TYPE, K.Note.CONTENT_ITEM_TYPE, K.Event.CONTENT_ITEM_TYPE,
+        K.Organization.CONTENT_ITEM_TYPE, K.Note.CONTENT_ITEM_TYPE, K.Event.CONTENT_ITEM_TYPE, K.Im.CONTENT_ITEM_TYPE,
     )
+
+    private fun imProtocolName(p: Int) = when (p) {
+        K.Im.PROTOCOL_SKYPE -> "Skype"; K.Im.PROTOCOL_AIM -> "AIM"; K.Im.PROTOCOL_MSN -> "MSN"; K.Im.PROTOCOL_YAHOO -> "Yahoo"
+        K.Im.PROTOCOL_QQ -> "QQ"; K.Im.PROTOCOL_GOOGLE_TALK -> "Google Talk"; K.Im.PROTOCOL_ICQ -> "ICQ"; K.Im.PROTOCOL_JABBER -> "Jabber"
+        else -> ""
+    }
 
     /** Creates a new device contact (or rewrites the managed fields of an existing one). Returns the contact id. */
     fun save(ctx: Context, edit: ContactEdit): Long? {
@@ -141,6 +152,10 @@ object ContactsRepo {
         }
         if (d.address.isNotBlank()) ops += row(K.StructuredPostal.CONTENT_ITEM_TYPE).withValue(K.StructuredPostal.FORMATTED_ADDRESS, d.address.trim()).build()
         if (d.company.isNotBlank()) ops += row(K.Organization.CONTENT_ITEM_TYPE).withValue(K.Organization.COMPANY, d.company.trim()).build()
+        for (im in d.ims.filter { it.handle.isNotBlank() }) {
+            ops += row(K.Im.CONTENT_ITEM_TYPE).withValue(K.Im.DATA, im.handle.trim()).withValue(K.Im.TYPE, K.Im.TYPE_OTHER)
+                .withValue(K.Im.PROTOCOL, K.Im.PROTOCOL_CUSTOM).withValue(K.Im.CUSTOM_PROTOCOL, im.platform).build()
+        }
         if (d.notes.isNotBlank()) ops += row(K.Note.CONTENT_ITEM_TYPE).withValue(K.Note.NOTE, d.notes.trim()).build()
         if (d.birthday.isNotBlank()) ops += row(K.Event.CONTENT_ITEM_TYPE).withValue(K.Event.START_DATE, d.birthday.trim()).withValue(K.Event.TYPE, K.Event.TYPE_BIRTHDAY).build()
         if (edit.photo != null) ops += row(K.Photo.CONTENT_ITEM_TYPE).withValue(K.Photo.PHOTO, edit.photo).build()

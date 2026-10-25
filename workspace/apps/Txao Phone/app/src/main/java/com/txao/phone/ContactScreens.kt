@@ -12,6 +12,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -57,6 +61,26 @@ fun placeVideoCall(ctx: Context, number: String) {
             Bundle().apply { putInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE, VideoProfile.STATE_BIDIRECTIONAL) },
         )
     } catch (_: SecurityException) {
+    }
+}
+
+fun imIcon(p: ImPlatform): Int = when (p) {
+    ImPlatform.WhatsApp -> R.drawable.ic_im_whatsapp; ImPlatform.Telegram -> R.drawable.ic_im_telegram
+    ImPlatform.Signal -> R.drawable.ic_im_signal; ImPlatform.Messenger -> R.drawable.ic_im_messenger
+    ImPlatform.Instagram -> R.drawable.ic_im_instagram; ImPlatform.Discord -> R.drawable.ic_im_discord
+    ImPlatform.Snapchat -> R.drawable.ic_im_snapchat; ImPlatform.X -> R.drawable.ic_im_x
+    ImPlatform.Skype -> R.drawable.ic_im_skype; ImPlatform.Other -> R.drawable.ic_im_other
+}
+
+/** Opens the person's chat in the platform's app (or browser); copies the handle when there is no link. */
+private fun openIm(ctx: Context, im: ImEntry) {
+    val link = im.known.link(im.handle)
+    val opened = link != null && try {
+        ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true
+    } catch (_: Exception) { false }
+    if (!opened) {
+        ctx.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(im.displayPlatform, im.handle))
+        Toast.makeText(ctx, "Copied ${im.handle}", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -163,6 +187,20 @@ fun ContactPage(
             items(d.emails, key = { "e" + it.value }) { e ->
                 InfoCard { InfoRow(Icons.Filled.Email, e.value, e.display(ctx, false), { launch(ctx, Intent(Intent.ACTION_SENDTO, Uri.fromParts("mailto", e.value, null))) }) }
             }
+            items(d.ims, key = { "i" + it.platform + it.handle }) { im ->
+                InfoCard {
+                    Row(
+                        Modifier.fillMaxWidth().clickable { openIm(ctx, im) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Image(painterResource(imIcon(im.known)), im.displayPlatform, Modifier.size(24.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(im.handle)
+                            Text(im.displayPlatform, fontSize = 13.sp, color = Muted)
+                        }
+                    }
+                }
+            }
             if (d.address.isNotEmpty()) item {
                 InfoCard { InfoRow(Icons.Filled.Place, d.address, "Address", { launch(ctx, Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(d.address)))) }) }
             }
@@ -209,6 +247,7 @@ fun EditorScreen(initial: ContactDetails, onCancel: () -> Unit, onSaved: (Long?)
     var notes by remember { mutableStateOf(initial.notes) }
     val phones = remember { mutableStateListOf<Labeled>().apply { addAll(initial.phones.ifEmpty { listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, "")) }) } }
     val emails = remember { mutableStateListOf<Labeled>().apply { addAll(initial.emails) } }
+    val ims = remember { mutableStateListOf<ImEntry>().apply { addAll(initial.ims) } }
     var newPhoto by remember { mutableStateOf<ByteArray?>(null) }
     var removePhoto by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -227,7 +266,7 @@ fun EditorScreen(initial: ContactDetails, onCancel: () -> Unit, onSaved: (Long?)
             Text(if (initial.rawId == 0L) "New contact" else "Edit contact", Modifier.weight(1f), fontSize = 20.sp, fontWeight = FontWeight.Black)
             Button({
                 if (name.isBlank() && phones.none { it.value.isNotBlank() }) { error = "Add a name or a phone number."; return@Button }
-                val d = initial.copy(name = name, company = company, address = address, birthday = birthday, notes = notes, phones = phones.toList(), emails = emails.toList())
+                val d = initial.copy(name = name, company = company, address = address, birthday = birthday, notes = notes, phones = phones.toList(), emails = emails.toList(), ims = ims.filter { it.handle.isNotBlank() })
                 val id = ContactsRepo.save(ctx, ContactEdit(d, newPhoto, removePhoto))
                 if (id == null) error = "Could not save. Is contacts permission granted?" else onSaved(id)
             }, Modifier.padding(end = 12.dp)) { Text("Save") }
@@ -250,6 +289,8 @@ fun EditorScreen(initial: ContactDetails, onCancel: () -> Unit, onSaved: (Long?)
             TextButton({ phones += Labeled(ContactsRepo.PHONE_TYPES[0], null, "") }) { Icon(Icons.Filled.Add, null); Spacer(Modifier.width(6.dp)); Text("Add phone") }
             emails.forEachIndexed { i, e -> LabeledField(e, false, ContactsRepo.EMAIL_TYPES, { emails[i] = it }, { emails.removeAt(i) }) }
             TextButton({ emails += Labeled(ContactsRepo.EMAIL_TYPES[0], null, "") }) { Icon(Icons.Filled.Add, null); Spacer(Modifier.width(6.dp)); Text("Add email") }
+            ims.forEachIndexed { i, im -> ImField(im, { ims[i] = it }, { ims.removeAt(i) }) }
+            TextButton({ ims += ImEntry(ImPlatform.WhatsApp.label, "") }) { Icon(Icons.Filled.Add, null); Spacer(Modifier.width(6.dp)); Text("Add username (WhatsApp, Telegram, Signal…)") }
             Field("Company", company, { company = it }, Icons.Filled.Business)
             Field("Address", address, { address = it }, Icons.Filled.Place)
             Field("Birthday (YYYY-MM-DD)", birthday, { birthday = it }, Icons.Filled.Cake)
@@ -297,5 +338,29 @@ private fun LabeledField(item: Labeled, phone: Boolean, types: List<Int>, onChan
         },
         singleLine = true, shape = RoundedCornerShape(18.dp),
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = if (phone) androidx.compose.ui.text.input.KeyboardType.Phone else androidx.compose.ui.text.input.KeyboardType.Email),
+    )
+}
+
+@Composable
+private fun ImField(item: ImEntry, onChange: (ImEntry) -> Unit, onRemove: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        item.handle, { onChange(item.copy(handle = it)) }, Modifier.fillMaxWidth(),
+        label = { Text("Username or number · ${item.displayPlatform}") },
+        leadingIcon = {
+            Box {
+                Image(painterResource(imIcon(item.known)), item.displayPlatform, Modifier.size(28.dp).clickable { menu = true })
+                DropdownMenu(menu, { menu = false }) {
+                    ImPlatform.entries.forEach { p ->
+                        DropdownMenuItem(
+                            { Text(p.label) }, { onChange(item.copy(platform = p.label)); menu = false },
+                            leadingIcon = { Image(painterResource(imIcon(p)), null, Modifier.size(24.dp)) },
+                        )
+                    }
+                }
+            }
+        },
+        trailingIcon = { IconButton(onRemove) { Icon(Icons.Filled.RemoveCircleOutline, "Remove", tint = Muted) } },
+        singleLine = true, shape = RoundedCornerShape(18.dp),
     )
 }

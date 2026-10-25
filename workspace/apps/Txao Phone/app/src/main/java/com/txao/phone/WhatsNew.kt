@@ -29,6 +29,9 @@ object WhatsNew {
 
     /** Release notes by versionCode. Add an entry per release; versions without one show nothing. */
     val notes: Map<Int, List<String>> = mapOf(
+        7 to listOf(
+            "Add usernames for WhatsApp, Telegram, Signal, Messenger, Instagram, Discord, Snapchat, X and Skype to a contact; tap one to open the chat.",
+        ),
         6 to listOf(
             "Dial pad tones: keys now beep like a classic phone (follows your system setting).",
             "This \"What's new\" note appears once after each update.",

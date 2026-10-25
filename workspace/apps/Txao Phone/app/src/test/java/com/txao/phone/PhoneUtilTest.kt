@@ -80,3 +80,22 @@ class CallEntryKindTest {
         org.junit.Assert.assertEquals("Missed", e(android.provider.CallLog.Calls.MISSED_TYPE).kind)
     }
 }
+
+class ImPlatformTest {
+    @org.junit.Test fun linksOpenTheRightChat() {
+        org.junit.Assert.assertEquals("https://wa.me/436642423015", ImPlatform.WhatsApp.link("+43 664 2423015"))
+        org.junit.Assert.assertEquals("https://t.me/martin", ImPlatform.Telegram.link("@martin"))
+        org.junit.Assert.assertEquals("tg://resolve?phone=436642423015", ImPlatform.Telegram.link("+43 664 2423015"))
+        org.junit.Assert.assertEquals("https://signal.me/#u/martin.42", ImPlatform.Signal.link("martin.42"))
+        org.junit.Assert.assertEquals("https://instagram.com/_u/martin", ImPlatform.Instagram.link("@martin"))
+        org.junit.Assert.assertNull(ImPlatform.Discord.link("martin#1234"))
+        org.junit.Assert.assertNull(ImPlatform.Other.link("anything"))
+        org.junit.Assert.assertNull(ImPlatform.X.link("  "))
+    }
+
+    @org.junit.Test fun namesMapBackToPlatforms() {
+        org.junit.Assert.assertEquals(ImPlatform.Signal, ImPlatform.fromName("signal"))
+        org.junit.Assert.assertEquals(ImPlatform.Other, ImPlatform.fromName("Matrix"))
+        org.junit.Assert.assertEquals("Matrix", ImEntry("Matrix", "@a:b").displayPlatform)
+    }
+}
