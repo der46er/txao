@@ -2,4 +2,5 @@
 <paths>
     <root-path name="storage" path="." />
     <files-path name="locked" path="locked/" />
+    <cache-path name="vault_open" path="vault_open/" />
 </paths>

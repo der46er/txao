@@ -56,7 +56,8 @@ fun iconFor(kind: Kind): ImageVector = when (kind) {
 fun FileGlyph(file: File, isDir: Boolean, size: Dp, modifier: Modifier = Modifier) {
     val kind = if (isDir) Kind.Folder else kindOf(file)
     if (kind == Kind.Folder) {
-        Icon(Icons.Filled.Folder, null, modifier.size(size), tint = FolderTint)
+        val tint = LocalFolderColors.current?.get(file.path) ?: FolderTint
+        Icon(Icons.Filled.Folder, null, modifier.size(size), tint = tint)
         return
     }
     if (kind == Kind.Image) {

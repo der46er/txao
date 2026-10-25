@@ -1,7 +1,5 @@
 package com.txao.files
 
-import android.app.Activity
-import android.app.KeyguardManager
 import android.content.Context
 import android.os.Environment
 import android.os.StatFs
@@ -24,6 +22,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -47,12 +47,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -67,27 +69,11 @@ private class Clip(val files: List<File>, val move: Boolean)
 
 @Composable
 fun FilesApp(prefs: Prefs, resumeTick: Int, requestAccess: () -> Unit) {
-    val ctx = LocalContext.current
-    var bgVersion by remember { mutableIntStateOf(0) }
-    val pickBg = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            runCatching {
-                ctx.contentResolver.openInputStream(uri)?.use { input -> prefs.backgroundFile.outputStream().use { input.copyTo(it) } }
-                bgVersion++
-            }
-        }
-    }
-    FilesBackground(prefs, bgVersion, Modifier.fillMaxSize()) {
-        val allowed = remember(resumeTick) { MainActivity.hasAccess() }
-        if (!allowed) {
-            AccessGate(requestAccess)
-        } else {
-            Browser(
-                prefs,
-                chooseBackground = { pickBg.launch("image/*") },
-                clearBackground = { prefs.backgroundFile.delete(); bgVersion++ },
-                hasBackground = prefs.backgroundFile.exists(),
-            )
+    val folderColors = remember { FolderColors(prefs) }
+    FilesBackground(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalFolderColors provides folderColors) {
+            val allowed = remember(resumeTick) { MainActivity.hasAccess() }
+            if (!allowed) AccessGate(requestAccess) else Browser(prefs, folderColors)
         }
     }
 }
@@ -116,12 +102,13 @@ private fun AccessGate(request: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground: () -> Unit, hasBackground: Boolean) {
+private fun Browser(prefs: Prefs, folderColors: FolderColors) {
     val ctx = LocalContext.current
     val vols = remember { volumes(ctx) }
-    val roots = remember(vols) { vols.map { it.root.path } }
+    var homePath by remember { mutableStateOf(prefs.homePath) }
+    val roots = remember(vols, homePath) { vols.map { it.root.path } + listOfNotNull(homePath.ifEmpty { null }) }
     var tab by rememberSaveable { mutableStateOf(HomeTab.Files) }
-    var path by rememberSaveable { mutableStateOf(vols[0].root.path) }
+    var path by rememberSaveable { mutableStateOf(prefs.homePath.takeIf { it.isNotEmpty() && File(it).isDirectory } ?: vols[0].root.path) }
     var searching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var selected by remember { mutableStateOf(setOf<String>()) }
@@ -132,19 +119,22 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     var sortField by remember { mutableStateOf(prefs.sortField) }
     var sortAsc by remember { mutableStateOf(prefs.sortAscending) }
     var dialog by remember { mutableStateOf<Dialog?>(null) }
-    var unlocked by remember { mutableStateOf(false) }
+    var master by remember { mutableStateOf<ByteArray?>(null) }
+    var afterUnlock by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var vaultMode by remember { mutableStateOf(prefs.vaultMode) }
+    val scope = rememberCoroutineScope()
     var fadeMs by remember { mutableIntStateOf(prefs.fadeMs) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showNews by remember { mutableStateOf(prefs.lastSeenVersion != appVersion(ctx)) }
     val vaultDir = remember { File(ctx.filesDir, "locked").apply { mkdirs() } }
-    val auth = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        if (r.resultCode == Activity.RESULT_OK) unlocked = true
+    LaunchedEffect(tab) {
+        if (tab != HomeTab.Locked) master = null
+        File(ctx.cacheDir, "vault_open").deleteRecursively()
     }
-    LaunchedEffect(tab) { if (tab != HomeTab.Locked) unlocked = false }
 
     val vol = vols.lastOrNull { path == it.root.path || path.startsWith(it.root.path + "/") } ?: vols[0]
     val dir = File(path)
-    val layout = remember(path, layoutTick) { prefs.layoutFor(path, roots) }
+    val layout = remember(path, layoutTick, roots) { prefs.layoutFor(path, roots) }
     val selecting = selected.isNotEmpty()
 
     var entries by remember { mutableStateOf(emptyList<Entry>()) }
@@ -158,6 +148,32 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
         else if (!openFile(ctx, e.file)) toast("No app can open this file")
     }
     fun closeSearch() { searching = false; query = "" }
+    fun releaseIfIdle() { if (tab != HomeTab.Locked) master = null }
+    fun finishUnlock(m: ByteArray) {
+        master = m
+        scope.launch(Dispatchers.IO) { Vault.migrateLegacy(m, vaultDir) }
+        val cb = afterUnlock
+        afterUnlock = null
+        cb?.invoke()
+    }
+    /** Runs [then] once the Locked folder is open: asks for the phone lock or the password first. */
+    fun unlockVault(then: () -> Unit) {
+        if (master != null) { then(); return }
+        afterUnlock = then
+        if (prefs.vaultMode == "password" && prefs.vaultBlob.isNotEmpty()) { dialog = Dialog.Password; return }
+        authenticateWithPhone(
+            ctx,
+            onOk = {
+                val blob = prefs.vaultBlob
+                val m = runCatching {
+                    if (blob.isEmpty()) VaultKeys.newMaster().also { prefs.vaultBlob = VaultKeys.wrapDevice(it); prefs.vaultMode = "device" }
+                    else VaultKeys.unwrapDevice(blob)
+                }.getOrNull()
+                if (m == null) { afterUnlock = null; toast("Could not unlock") } else finishUnlock(m)
+            },
+            onFail = { afterUnlock = null; toast(it) },
+        )
+    }
 
     BackHandler(enabled = showSettings) { showSettings = false }
     BackHandler(enabled = !showSettings && selecting) { selected = emptySet() }
@@ -181,10 +197,18 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                 onCopy = { clip = Clip(selected.map(::File), false); selected = emptySet(); toast("Copied. Use + to paste.") },
                                 onCut = { clip = Clip(selected.map(::File), true); selected = emptySet(); toast("Cut. Use + to paste.") },
                                 onRename = { dialog = Dialog.Rename(File(selected.first())) },
+                                canColor = selected.all { File(it).isDirectory },
+                                onColor = { dialog = Dialog.Recolor(selected.map(::File)) },
                                 onLock = {
-                                    val ok = selected.count { transfer(File(it), vaultDir, true) }
-                                    toast(if (ok == selected.size) "Moved to Locked" else "Some items could not be locked")
-                                    selected = emptySet(); refresh++
+                                    val files = selected.map(::File)
+                                    unlockVault {
+                                        val m = master ?: return@unlockVault
+                                        scope.launch {
+                                            val ok = withContext(Dispatchers.IO) { files.count { Vault.lock(m, it, vaultDir) } }
+                                            toast(if (ok == files.size) "Locked and encrypted" else "Some items could not be locked")
+                                            selected = emptySet(); refresh++; releaseIfIdle()
+                                        }
+                                    }
                                 },
                                 onDelete = { dialog = Dialog.Delete(selected.map(::File)) },
                             )
@@ -209,9 +233,6 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                 onShowHidden = { showHidden = it; prefs.showHidden = it },
                                 hasCustomLayout = prefs.hasCustomLayout(path),
                                 onResetLayout = { prefs.setLayout(path, null); layoutTick++ },
-                                hasBackground = hasBackground,
-                                onChooseBackground = chooseBackground,
-                                onClearBackground = clearBackground,
                                 onSettings = { showSettings = true },
                             )
                         }
@@ -256,29 +277,20 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                         }
                     }
                 }
-                HomeTab.Recents -> {
-                    val recents by produceState(emptyList<Entry>(), vol, showHidden, refresh) {
-                        value = withContext(Dispatchers.IO) { recentFiles(vols[0].root, showHidden) }
-                    }
-                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)) {
-                        items(vols, key = { "vol:" + it.root.path }) { v ->
-                            StorageCard(v) { path = v.root.path; tab = HomeTab.Files }
-                        }
-                        item { Text("Recent files", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) }
-                        items(recents, key = { it.file.path }) { e ->
-                            ListRow(e, false, subtitleParent = true, onClick = { open(e) }, onLong = {})
-                        }
-                    }
-                }
+                HomeTab.Recents -> RecentsTab(vols, showHidden, refresh, onVolume = { v -> path = v.root.path; tab = HomeTab.Files }, onOpen = ::open)
                 HomeTab.Locked -> LockedTab(
-                    vault = vaultDir, refresh = refresh, unlocked = unlocked,
-                    onUnlock = {
-                        val km = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                        @Suppress("DEPRECATION")
-                        val i = if (km.isDeviceSecure) km.createConfirmDeviceCredentialIntent("Locked", "Unlock your private files") else null
-                        if (i != null) auth.launch(i) else unlocked = true
+                    vault = vaultDir, refresh = refresh, unlocked = master != null,
+                    onUnlock = { unlockVault { refresh++ } },
+                    onOpen = { e ->
+                        val m = master
+                        if (e.isDir) toast("Long-press a folder to move it out or delete it")
+                        else if (m != null) scope.launch {
+                            val out = withContext(Dispatchers.IO) {
+                                runCatching { File(ctx.cacheDir, "vault_open/" + e.name).also { Vault.decryptTo(m, e.file, it) } }.getOrNull()
+                            }
+                            if (out == null || !openFile(ctx, out)) toast("Could not open this file")
+                        }
                     },
-                    onOpen = { e -> if (e.isDir) toast("Long-press a folder to move it out or delete it") else open(e) },
                     onLong = { dialog = Dialog.Vault(it.file) },
                 )
             }
@@ -313,7 +325,20 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
         SettingsScreen(
             prefs, fadeMs, { fadeMs = it; prefs.fadeMs = it },
             showHidden, { showHidden = it; prefs.showHidden = it },
-            hasBackground, chooseBackground, clearBackground,
+            vols, homePath, { homePath = it; prefs.homePath = it },
+            vaultMode,
+            onUsePassword = { unlockVault { dialog = Dialog.SetPassword } },
+            onUseDevice = {
+                unlockVault {
+                    val m = master ?: return@unlockVault
+                    val blob = runCatching { VaultKeys.wrapDevice(m) }.getOrNull()
+                    if (blob == null) toast("Could not switch") else {
+                        prefs.vaultBlob = blob; prefs.vaultSalt = ""; prefs.vaultMode = "device"; vaultMode = "device"
+                        toast("Locked now opens with your phone lock")
+                    }
+                    releaseIfIdle()
+                }
+            },
             onClose = { showSettings = false },
         )
     }
@@ -359,13 +384,39 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
             confirmButton = {
                 TextButton({
                     dialog = null
-                    val out = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).apply { mkdirs() }
-                    toast(if (transfer(d.file, out, true)) "Moved to Download" else "Could not move out")
-                    refresh++
+                    val m = master
+                    val out = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    if (m != null) scope.launch {
+                        val ok = withContext(Dispatchers.IO) { Vault.unlockOut(m, d.file, out) }
+                        toast(if (ok) "Decrypted to Download" else "Could not move out")
+                        refresh++
+                    }
                 }) { Text("Move to Download") }
             },
             dismissButton = { TextButton({ dialog = Dialog.Delete(listOf(d.file)) }) { Text("Delete", color = Color(0xFFFFB4AB)) } },
         )
+        is Dialog.Recolor -> ColorDialog(prefs.palette, onDismiss = { dialog = null }) { argb ->
+            d.files.forEach { folderColors.set(it.path, argb) }
+            dialog = null; selected = emptySet()
+        }
+        Dialog.Password -> PasswordDialog(
+            onDismiss = { dialog = null; afterUnlock = null },
+        ) { pw ->
+            scope.launch {
+                val m = withContext(Dispatchers.IO) { VaultKeys.unwrapPassword(prefs.vaultBlob, prefs.vaultSalt, pw.toCharArray()) }
+                if (m == null) toast("Wrong password") else { dialog = null; finishUnlock(m) }
+            }
+        }
+        Dialog.SetPassword -> SetPasswordDialog(onDismiss = { dialog = null; releaseIfIdle() }) { pw ->
+            val m = master
+            dialog = null
+            if (m != null) scope.launch {
+                val (salt, blob) = withContext(Dispatchers.IO) { VaultKeys.wrapPassword(m, pw.toCharArray()) }
+                prefs.vaultSalt = salt; prefs.vaultBlob = blob; prefs.vaultMode = "password"; vaultMode = "password"
+                toast("Locked now opens with your password")
+                releaseIfIdle()
+            }
+        }
         null -> {}
     }
 }
@@ -412,6 +463,9 @@ private sealed interface Dialog {
     data class Rename(val file: File) : Dialog
     data class Delete(val files: List<File>) : Dialog
     data class Vault(val file: File) : Dialog
+    data class Recolor(val files: List<File>) : Dialog
+    data object Password : Dialog
+    data object SetPassword : Dialog
 }
 
 private fun toggle(set: Set<String>, e: Entry) = if (e.file.path in set) set - e.file.path else set + e.file.path
@@ -463,7 +517,7 @@ private fun RowScope.BrowseBar(
     sortField: SortField, sortAsc: Boolean, onSort: (SortField, Boolean) -> Unit,
     showHidden: Boolean, onShowHidden: (Boolean) -> Unit,
     hasCustomLayout: Boolean, onResetLayout: () -> Unit,
-    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit, onSettings: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     var sortMenu by remember { mutableStateOf(false) }
     var moreMenu by remember { mutableStateOf(false) }
@@ -514,8 +568,6 @@ private fun RowScope.BrowseBar(
         DropdownMenu(moreMenu, { moreMenu = false }) {
             DropdownMenuItem({ Text(if (showHidden) "Hide hidden files" else "Show hidden files") }, { onShowHidden(!showHidden); moreMenu = false })
             if (hasCustomLayout) DropdownMenuItem({ Text("Use default layout here") }, { onResetLayout(); moreMenu = false })
-            DropdownMenuItem({ Text("Choose background image") }, { onChooseBackground(); moreMenu = false })
-            if (hasBackground) DropdownMenuItem({ Text("Remove background image") }, { onClearBackground(); moreMenu = false })
             DropdownMenuItem({ Text("Settings") }, { onSettings(); moreMenu = false })
         }
     }
@@ -524,7 +576,7 @@ private fun RowScope.BrowseBar(
 @Composable
 private fun RowScope.SelectionBar(
     count: Int, onClose: () -> Unit, onSelectAll: () -> Unit, onShare: () -> Unit,
-    onCopy: () -> Unit, onCut: () -> Unit, onRename: () -> Unit, onLock: () -> Unit, onDelete: () -> Unit,
+    onCopy: () -> Unit, onCut: () -> Unit, onRename: () -> Unit, canColor: Boolean, onColor: () -> Unit, onLock: () -> Unit, onDelete: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     BarIcon(Icons.Filled.Close, "Cancel selection", onClose)
@@ -537,6 +589,7 @@ private fun RowScope.SelectionBar(
             DropdownMenuItem({ Text("Select all") }, { onSelectAll(); menu = false })
             DropdownMenuItem({ Text("Copy") }, { onCopy(); menu = false })
             DropdownMenuItem({ Text("Cut") }, { onCut(); menu = false })
+            if (canColor) DropdownMenuItem({ Text("Folder color") }, { onColor(); menu = false })
             DropdownMenuItem({ Text("Move to Locked") }, { onLock(); menu = false })
             if (count == 1) DropdownMenuItem({ Text("Rename") }, { onRename(); menu = false })
         }
@@ -656,7 +709,7 @@ private fun ColumnScope.LockedTab(
             Spacer(Modifier.height(12.dp))
             Text("Locked", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
-            Text("Private files, protected by your phone lock. Select files and choose \"Move to Locked\".",
+            Text("Private files, encrypted on your phone. Select files and choose \"Move to Locked\".",
                 fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.height(16.dp))
             Button(onClick = onUnlock, colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = AccentText)) { Text("Unlock") }
@@ -694,10 +747,16 @@ private fun NameDialog(title: String, initial: String, confirm: String, onDismis
 @Composable
 private fun SettingsScreen(
     prefs: Prefs, fadeMs: Int, onFade: (Int) -> Unit, showHidden: Boolean, onHidden: (Boolean) -> Unit,
-    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit, onClose: () -> Unit,
+    vols: List<Volume>, homePath: String, onHome: (String) -> Unit,
+    vaultMode: String, onUsePassword: () -> Unit, onUseDevice: () -> Unit, onClose: () -> Unit,
 ) {
     val ctx = LocalContext.current
     var news by remember { mutableStateOf(false) }
+    var palette by remember { mutableStateOf(prefs.palette) }
+    var newHex by remember { mutableStateOf("") }
+    var homeMenu by remember { mutableStateOf(false) }
+    val homeChoices = remember { vols.map { it.label to it.root } + listDir(vols[0].root, false, SortField.Name, true).filter { it.isDir }.map { it.name to it.file } }
+    fun savePalette(p: List<String>) { palette = p; prefs.palette = p }
     Column(Modifier.fillMaxSize().background(GlassBg).systemBarsPadding().verticalScroll(rememberScrollState())) {
         Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClose) { Icon(Icons.Filled.ArrowBack, "Back", tint = Color.White) }
@@ -710,11 +769,54 @@ private fun SettingsScreen(
                 valueRange = 0.1f..0.9f, steps = 7,
                 colors = SliderDefaults.colors(thumbColor = Accent, activeTrackColor = Accent),
             )
-            Spacer(Modifier.height(4.dp))
-            Row {
-                TextButton(onChooseBackground) { Text("Choose background image") }
-                if (hasBackground) TextButton(onClearBackground) { Text("Remove") }
+        }
+        SettingsCard("Folder colors") {
+            Text("Colors offered when you color a folder. The first one is the default.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            palette.forEachIndexed { i, hex ->
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(28.dp).clip(CircleShape).background(Color(Hex.parse(hex) ?: 0)))
+                    Text(hex, Modifier.weight(1f).padding(start = 12.dp), fontSize = 15.sp)
+                    IconButton({ savePalette(palette.moved(i, -1)) }, enabled = i > 0) { Icon(Icons.Filled.KeyboardArrowUp, "Move up") }
+                    IconButton({ savePalette(palette.moved(i, 1)) }, enabled = i < palette.lastIndex) { Icon(Icons.Filled.KeyboardArrowDown, "Move down") }
+                    IconButton({ savePalette(palette.filterIndexed { j, _ -> j != i }) }) { Icon(Icons.Filled.Delete, "Remove") }
+                }
             }
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(newHex, { newHex = it }, Modifier.weight(1f), singleLine = true, label = { Text("Hex code, e.g. #FF8800") })
+                TextButton(
+                    onClick = { Hex.parse(newHex)?.let { savePalette(palette + Hex.format(it)); newHex = "" } },
+                    enabled = Hex.parse(newHex) != null && Hex.format(Hex.parse(newHex)!!) !in palette,
+                ) { Text("Add") }
+            }
+            TextButton({ savePalette(DefaultPalette) }) { Text("Reset to the 10 defaults") }
+        }
+        SettingsCard("Home screen") {
+            Text("The Files tab opens in this folder.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box {
+                TextButton({ homeMenu = true }) {
+                    val label = homeChoices.firstOrNull { it.second.path == (homePath.ifEmpty { vols[0].root.path }) }?.first
+                        ?: homePath.substringAfterLast('/')
+                    Text(label)
+                }
+                DropdownMenu(homeMenu, { homeMenu = false }) {
+                    for ((label, f) in homeChoices) {
+                        DropdownMenuItem({ Text(label) }, { onHome(if (f.path == vols[0].root.path) "" else f.path); homeMenu = false })
+                    }
+                }
+            }
+        }
+        SettingsCard("Locked folder") {
+            Text("Files in Locked are encrypted with AES-256. Choose what unlocks them.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth().clickable { if (vaultMode != "device") onUseDevice() }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(vaultMode == "device", { if (vaultMode != "device") onUseDevice() })
+                Text("Fingerprint or phone PIN / pattern", fontSize = 15.sp)
+            }
+            Row(Modifier.fillMaxWidth().clickable { if (vaultMode != "password") onUsePassword() }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(vaultMode == "password", { if (vaultMode != "password") onUsePassword() })
+                Text("Custom password", fontSize = 15.sp)
+            }
+            if (vaultMode == "password") TextButton(onUsePassword) { Text("Change password") }
+            Text("A forgotten custom password cannot be recovered, and neither can the files.", fontSize = 12.sp, color = Color(0xFFFFB4AB))
         }
         SettingsCard("Files") {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -755,5 +857,112 @@ private fun WhatsNewDialog(releases: List<Release>, onDismiss: () -> Unit) {
             }
         },
         confirmButton = { TextButton(onDismiss) { Text("OK") } },
+    )
+}
+
+@Composable
+private fun ColumnScope.RecentsTab(vols: List<Volume>, showHidden: Boolean, refresh: Int, onVolume: (Volume) -> Unit, onOpen: (Entry) -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val items = remember { mutableStateListOf<Entry>() }
+    var offset by remember { mutableIntStateOf(0) }
+    var end by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+
+    // Loads 20 files at a time, so the list shows up at once and fills in as you scroll.
+    fun more() {
+        if (loading || end) return
+        loading = true
+        val from = offset
+        scope.launch {
+            val page = withContext(Dispatchers.IO) { recentPage(ctx, from, 20, showHidden) }
+            val known = items.map { it.file.path }.toHashSet()
+            items.addAll(page.entries.filter { it.file.path !in known })
+            offset = page.nextOffset
+            end = page.end
+            loading = false
+        }
+    }
+    LaunchedEffect(showHidden, refresh) { items.clear(); offset = 0; end = false; loading = false; more() }
+    val nearEnd by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - 4
+        }
+    }
+    LaunchedEffect(nearEnd, items.size, loading) { if (nearEnd) more() }
+
+    LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)) {
+        items(vols, key = { "vol:" + it.root.path }) { v -> StorageCard(v) { onVolume(v) } }
+        item { Text("Recent files", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) }
+        items(items, key = { it.file.path }) { e -> ListRow(e, false, subtitleParent = true, onClick = { onOpen(e) }, onLong = {}) }
+        if (loading) item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp), color = Accent, strokeWidth = 2.dp) } }
+    }
+}
+
+@Composable
+private fun ColorDialog(palette: List<String>, onDismiss: () -> Unit, onPick: (Int?) -> Unit) {
+    var hex by remember { mutableStateOf("") }
+    val custom = Hex.parse(hex)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = { Text("Folder color") },
+        text = {
+            Column {
+                for (row in palette.chunked(5)) {
+                    Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for (h in row) {
+                            val argb = Hex.parse(h) ?: continue
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(Color(argb)).clickable { onPick(argb) })
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(hex, { hex = it }, Modifier.weight(1f), singleLine = true, label = { Text("Custom hex") }, placeholder = { Text("#FF8800") })
+                    if (custom != null) Box(Modifier.padding(start = 8.dp).size(28.dp).clip(CircleShape).background(Color(custom)))
+                }
+            }
+        },
+        confirmButton = { TextButton({ custom?.let(onPick) }, enabled = custom != null) { Text("Apply") } },
+        dismissButton = { TextButton({ onPick(null) }) { Text("Default color") } },
+    )
+}
+
+@Composable
+private fun PasswordDialog(onDismiss: () -> Unit, onOk: (String) -> Unit) {
+    var pw by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = { Text("Locked") },
+        text = { OutlinedTextField(pw, { pw = it }, singleLine = true, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation()) },
+        confirmButton = { TextButton({ onOk(pw) }, enabled = pw.isNotEmpty()) { Text("Unlock") } },
+        dismissButton = { TextButton(onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun SetPasswordDialog(onDismiss: () -> Unit, onOk: (String) -> Unit) {
+    var pw by remember { mutableStateOf("") }
+    var again by remember { mutableStateOf("") }
+    val valid = pw.length >= 4 && pw == again
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = { Text("Locked password") },
+        text = {
+            Column {
+                Text("If you forget this password, your locked files cannot be recovered.", fontSize = 13.sp, color = Color(0xFFFFB4AB))
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(pw, { pw = it }, singleLine = true, label = { Text("New password (4+ characters)") }, visualTransformation = PasswordVisualTransformation())
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(again, { again = it }, singleLine = true, label = { Text("Repeat password") }, visualTransformation = PasswordVisualTransformation())
+            }
+        },
+        confirmButton = { TextButton({ onOk(pw) }, enabled = valid) { Text("Use password") } },
+        dismissButton = { TextButton(onDismiss) { Text("Cancel") } },
     )
 }

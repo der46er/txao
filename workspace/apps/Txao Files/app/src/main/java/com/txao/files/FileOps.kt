@@ -1,7 +1,10 @@
 package com.txao.files
 
 import android.content.Context
+import android.content.ContentResolver
 import android.content.Intent
+import android.os.Bundle
+import android.provider.MediaStore
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.webkit.MimeTypeMap
@@ -142,4 +145,43 @@ fun transfer(src: File, dir: File, move: Boolean): Boolean {
     val ok = if (src.isDirectory) src.copyRecursively(target, false) else runCatching { src.copyTo(target); true }.getOrDefault(false)
     if (ok && move) src.deleteRecursively()
     return ok
+}
+
+class RecentPage(val entries: List<Entry>, val nextOffset: Int, val end: Boolean)
+
+/**
+ * One page of the newest files, read from the media index (fast, sorted, pageable) instead of
+ * walking the whole storage. [offset] counts index rows, so pass back [RecentPage.nextOffset].
+ */
+fun recentPage(context: Context, offset: Int, limit: Int, showHidden: Boolean): RecentPage {
+    val uri = MediaStore.Files.getContentUri("external")
+    val data = MediaStore.Files.FileColumns.DATA
+    var next = offset
+    val out = ArrayList<Entry>()
+    var rounds = 0
+    while (out.size < limit && rounds++ < 12) {
+        val args = Bundle().apply {
+            putString(ContentResolver.QUERY_ARG_SQL_SELECTION, "$data NOT LIKE ? AND $data NOT LIKE ?")
+            putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("%/Android/%", "%/.%"))
+            putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(MediaStore.Files.FileColumns.DATE_MODIFIED))
+            putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING)
+            putInt(ContentResolver.QUERY_ARG_LIMIT, limit)
+            putInt(ContentResolver.QUERY_ARG_OFFSET, next)
+        }
+        var rows = 0
+        context.contentResolver.query(uri, arrayOf(data), args, null)?.use { c ->
+            while (c.moveToNext()) {
+                rows++
+                val f = File(c.getString(0) ?: continue)
+                if (f.isFile && (showHidden || !f.name.startsWith("."))) out.add(entryOf(f))
+            }
+        }
+        next += rows
+        if (rows < limit) return RecentPage(out, next, true)
+    }
+    if (offset == 0 && out.isEmpty()) {
+        // Nothing indexed (fresh phone, or the index is off): fall back to scanning once.
+        return RecentPage(recentFiles(Environment.getExternalStorageDirectory(), showHidden, 60), 0, true)
+    }
+    return RecentPage(out, next, false)
 }
