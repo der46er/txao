@@ -3,7 +3,7 @@ package com.txao.phone
 /** Messaging platforms a contact can have a username on. Pure data, no Android dependencies. */
 enum class ImPlatform(val label: String) {
     WhatsApp("WhatsApp"), Telegram("Telegram"), Signal("Signal"), Messenger("Messenger"),
-    Instagram("Instagram"), Discord("Discord"), Snapchat("Snapchat"), X("X"), Skype("Skype"), Other("Other");
+    Instagram("Instagram"), Discord("Discord"), Snapchat("Snapchat"), X("X"), TikTok("TikTok"), Skype("Skype"), Other("Other");
 
     /**
      * Link that opens this person's chat or profile (the installed app picks it up, otherwise the browser).
@@ -23,6 +23,7 @@ enum class ImPlatform(val label: String) {
             Discord -> if (h.all { it.isDigit() } && h.length >= 15) "https://discord.com/users/$h" else null
             Snapchat -> "https://www.snapchat.com/add/$user"
             X -> "https://x.com/$user"
+            TikTok -> "https://www.tiktok.com/@$user"
             Skype -> "skype:$user?chat"
             Other -> null
         }

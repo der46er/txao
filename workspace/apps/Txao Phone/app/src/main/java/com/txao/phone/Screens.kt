@@ -11,6 +11,7 @@ import android.telecom.TelecomManager
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -228,7 +229,11 @@ fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> 
             Box(Modifier.size(76.dp).clip(CircleShape).background(Mint).clickable(onClick = onCall), contentAlignment = Alignment.Center) {
                 Icon(Icons.Filled.Call, "Call", tint = OnMint, modifier = Modifier.size(32.dp))
             }
-            IconButton({ onChange(number.dropLast(1)) }, Modifier.size(48.dp)) { Icon(Icons.AutoMirrored.Filled.Backspace, "Delete") }
+            // Tap deletes one digit; long press clears the whole number.
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).combinedClickable(onClick = { onChange(number.dropLast(1)) }, onLongClick = { onChange("") }),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.AutoMirrored.Filled.Backspace, "Delete") }
         }
     }
 }

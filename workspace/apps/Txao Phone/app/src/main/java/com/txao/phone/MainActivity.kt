@@ -61,6 +61,10 @@ private sealed interface Screen {
     data object Settings : Screen
 }
 
+private data class CodeDialog(
+    val title: String, val text: String, val loading: Boolean = false, val dialAsCall: Boolean = false, val showAbout: Boolean = false,
+)
+
 private val Tabs = listOf("Favorites" to Icons.Filled.Star, "Recents" to Icons.Filled.History, "Contacts" to Icons.Filled.Contacts, "Voicemail" to Icons.Filled.Voicemail)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,11 +125,28 @@ private fun App(initialNumber: String) {
 
     // Placing a call never falls back to the system dialer: ask for the permission instead, then dial.
     var pendingCall by remember { mutableStateOf<String?>(null) }
+    var retryCall by remember { mutableStateOf<String?>(null) }
+    var codeDialog by remember { mutableStateOf<CodeDialog?>(null) }
     val callPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         val n = pendingCall; pendingCall = null
-        if (ok && n != null) placeCall(ctx, n)
+        if (ok && n != null) retryCall = n
     }
-    val call: (String) -> Unit = { n -> if (!placeCall(ctx, n)) { pendingCall = n; callPermLauncher.launch(Manifest.permission.CALL_PHONE) } }
+    val call: (String) -> Unit = { n ->
+        val needsPermission = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission && n.isNotEmpty()) {
+            pendingCall = n; callPermLauncher.launch(Manifest.permission.CALL_PHONE)
+        } else when (val code = DialCode.parse(n)) {
+            DialCode.None -> placeCall(ctx, n)
+            DialCode.Imei -> codeDialog = CodeDialog("Device identifiers", DialCodeHandler.imei(ctx)?.let { "IMEI: $it" }
+                ?: "Android does not let apps read the IMEI. You can find it in Settings > About phone.", showAbout = true)
+            is DialCode.Secret -> { DialCodeHandler.sendSecretCode(ctx, code.code); codeDialog = CodeDialog("Hidden code", "Sent ${code.code} to apps that listen for it. If nothing opens, this phone does not use that code.") }
+            is DialCode.Ussd -> {
+                codeDialog = CodeDialog(code.code, "Sending…", loading = true)
+                DialCodeHandler.sendUssd(ctx, code.code) { text, failed -> codeDialog = CodeDialog(code.code, text, dialAsCall = failed) }
+            }
+        }
+    }
+    LaunchedEffect(retryCall) { retryCall?.let { retryCall = null; call(it) } }
     val open: (String, String) -> Unit = { n, t -> screen = Screen.Detail(n, t, contacts.firstOrNull { PhoneUtil.sameNumber(it.number, n) }?.id) }
     val photos = remember(contacts) { contacts.filter { it.photoUri != null }.associate { PhoneUtil.key(it.number) to it.photoUri!! } }
     val resolver: (String) -> String? = remember(photos) { { n -> photos[PhoneUtil.key(n)] } }
@@ -204,6 +225,20 @@ private fun App(initialNumber: String) {
         }
     }
 
+    }
+    codeDialog?.let { d ->
+        AlertDialog(
+            onDismissRequest = { codeDialog = null },
+            title = { Text(d.title) },
+            text = { Text(d.text) },
+            confirmButton = { if (!d.loading) TextButton({ codeDialog = null }) { Text("OK") } },
+            dismissButton = {
+                Row {
+                    if (d.showAbout) TextButton({ codeDialog = null; try { ctx.startActivity(Intent(android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS)) } catch (_: Exception) {} }) { Text("About phone") }
+                    if (d.dialAsCall) TextButton({ codeDialog = null; placeCall(ctx, d.title) }) { Text("Dial as call") }
+                }
+            },
+        )
     }
     if (showHelp && !isDefault) {
         val methods = DefaultDialer.requestIntents(ctx).size
