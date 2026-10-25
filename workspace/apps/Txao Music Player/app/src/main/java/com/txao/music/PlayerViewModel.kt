@@ -77,7 +77,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun refresh() {
         viewModelScope.launch {
             // Query off the main thread; large libraries would otherwise block the UI.
-            val list = withContext(Dispatchers.IO) { MediaStoreSource.loadTracks(getApplication()) }
+            val list = withContext(Dispatchers.IO) { Overrides.apply(getApplication(), MediaStoreSource.loadTracks(getApplication())) }
             byId = list.associateBy { it.id }
             tracks = list
             loaded = true
@@ -188,13 +188,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 handlerFn(sender) { saveEdits(rest, edit, onDone, ok) }
                 return@launch
             }
+            Art.clear()
             refresh()
-            val nonMp3 = edit.cover != null && targets.any { !MediaEditor.isMp3(it) }
             onDone(
                 when {
                     failed > 0 && ok == 0 -> "Couldn't save. Allow changes to the file and try again."
                     failed > 0 -> "Saved $ok, $failed failed"
-                    nonMp3 -> "Saved. Cover art can only be written into MP3 files."
                     else -> "Saved"
                 },
             )

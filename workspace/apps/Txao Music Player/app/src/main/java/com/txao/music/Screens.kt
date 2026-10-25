@@ -135,7 +135,7 @@ fun EditScreen(vm: PlayerViewModel, tracks: List<Track>, back: () -> Unit, onReq
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TxaoButton("Choose cover", Icons.Filled.ImageIcon, primary = false) { pick.launch("image/*") }
-                    Text("Cover art is saved inside MP3 files.", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
+                    Text("Saved inside MP3 files, or kept in this app for other formats.", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
                 }
             }
             if (!single) Text("Only the fields you fill in are changed on all ${tracks.size} songs.", color = c.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
@@ -148,7 +148,7 @@ fun EditScreen(vm: PlayerViewModel, tracks: List<Track>, back: () -> Unit, onReq
                 if (single) Field("Track no.", trackNo, Modifier.weight(1f), number = true) { trackNo = it.filter(Char::isDigit).take(3) }
             }
             Field("Genre", genre) { genre = it }
-            if (!allFilesAccess && android.os.Build.VERSION.SDK_INT >= 30) {
+            if (!allFilesAccess && android.os.Build.VERSION.SDK_INT >= 30 && tracks.any(MediaEditor::isMp3)) {
                 GlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Android asks for confirmation every time a song file is changed. Allow \"All files access\" once to skip that. It's only used to save your edits, and nothing leaves your device.", style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant)
@@ -158,7 +158,7 @@ fun EditScreen(vm: PlayerViewModel, tracks: List<Track>, back: () -> Unit, onReq
             }
             message?.let { Text(it, color = if (it.startsWith("Saved")) c.primary else c.error) }
             Text(
-                "MP3 files get the new tags written into the file. For other formats the change is saved in your library only and may revert if the library is rescanned.",
+                "MP3 files get the new tags written into the file. For other formats (WAV, FLAC, M4A, …) the change is kept in this app and applied on top of your library; the file itself isn't modified.",
                 style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant,
             )
         }
@@ -178,13 +178,9 @@ fun EditScreen(vm: PlayerViewModel, tracks: List<Track>, back: () -> Unit, onReq
                 edit.genre == null && edit.year == null && edit.trackNo == null && edit.cover == null
             if (nothing) { back(); return@TxaoButton }
             saving = true
-            onRequestWrite(tracks.map { Uri.parse(it.uri) }) {
-                vm.saveEdits(tracks, edit, onDone = { msg ->
-                    saving = false
-                    message = msg
-                    if (msg.startsWith("Saved") && !msg.contains("Cover art")) back()
-                })
-            }
+            val save = { vm.saveEdits(tracks, edit, onDone = { msg -> saving = false; message = msg; if (msg.startsWith("Saved")) back() }) }
+            if (tracks.none(MediaEditor::isMp3)) { save(); return@TxaoButton }
+            onRequestWrite(tracks.map { Uri.parse(it.uri) }) { save() }
         }
     }
 }
