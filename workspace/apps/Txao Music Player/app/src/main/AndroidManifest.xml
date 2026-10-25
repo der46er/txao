@@ -9,6 +9,8 @@
     <!-- Keep music playing with the screen off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Media3 holds a partial wake lock so playback is not cut off when the screen is off. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Show the playback controls notification. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

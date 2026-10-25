@@ -9,6 +9,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -49,8 +53,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refresh() {
-        tracks = MediaStoreSource.loadTracks(getApplication())
-        loaded = true
+        viewModelScope.launch {
+            // Query off the main thread; large libraries would otherwise block the UI.
+            tracks = withContext(Dispatchers.IO) { MediaStoreSource.loadTracks(getApplication()) }
+            loaded = true
+        }
     }
 
     private fun sync(p: Player) {
