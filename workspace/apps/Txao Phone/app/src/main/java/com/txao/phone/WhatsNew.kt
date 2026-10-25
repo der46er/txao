@@ -29,6 +29,9 @@ object WhatsNew {
 
     /** Release notes by versionCode. Add an entry per release; versions without one show nothing. */
     val notes: Map<Int, List<String>> = mapOf(
+        8 to listOf(
+            "More reliable \"default phone app\" setup: if Android ignores the first request, Txao Phone tries other ways and tells you what to tap.",
+        ),
         7 to listOf(
             "Add usernames for WhatsApp, Telegram, Signal, Messenger, Instagram, Discord, Snapchat, X and Skype to a contact; tap one to open the chat.",
         ),
