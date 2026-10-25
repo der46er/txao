@@ -11,8 +11,8 @@ import androidx.compose.ui.graphics.Color
 val GlassBg = Color(0xFF0B0E14)
 val Accent = Color(0xFFCDB8FF)
 val AccentText = Color(0xFF2E1B5C)
-val GlassCard = Color(0x33FFFFFF)
-val GlassBorder = Color(0x1FFFFFFF)
+val GlassCard = Color(0x14FFFFFF)
+val GlassBorder = Color(0x24FFFFFF)
 
 private val TxaoDark = darkColorScheme(
     background = GlassBg,
@@ -27,7 +27,11 @@ private val TxaoDark = darkColorScheme(
 /** The gallery is always dark so photos sit on a neutral background. */
 @Composable
 fun TxaoTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = TxaoDark, content = content)
+    MaterialTheme(colorScheme = TxaoDark) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides TxaoDark.onBackground, content = content,
+        )
+    }
 }
 
 /** The suite wallpaper: deep blue-black with soft lavender, rose and blue glows. */

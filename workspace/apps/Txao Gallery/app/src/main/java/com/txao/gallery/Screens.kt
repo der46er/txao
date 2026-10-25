@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
@@ -133,7 +134,8 @@ private fun ColumnsSortMenu(
         DropdownMenu(open, { open = false }) {
             for (f in SortField.entries) {
                 DropdownMenuItem(
-                    text = { Text((if (sort.field == f) "● " else "○ ") + "Sort by ${f.name.lowercase()}") },
+                    text = { Text("Sort by ${f.name.lowercase()}") },
+                    trailingIcon = if (sort.field == f) ({ Icon(Icons.Default.Check, null, tint = Accent) }) else null,
                     onClick = { onSort(sort.copy(field = f)); open = false },
                 )
             }
@@ -328,7 +330,7 @@ fun HomeScreen(
         // Floating glass navigation bar
         Row(
             Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp)
-                .clip(RoundedCornerShape(32.dp)).background(Color(0xCC141824)).border(1.dp, GlassBorder, RoundedCornerShape(32.dp))
+                .clip(RoundedCornerShape(32.dp)).background(Color(0xE60F131C)).border(1.dp, GlassBorder, RoundedCornerShape(32.dp))
                 .padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -375,8 +377,10 @@ private fun SearchTab(
                 textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
                 cursorBrush = SolidColor(Color.White), modifier = Modifier.weight(1f),
                 decorationBox = { inner ->
-                    if (query.isEmpty()) Text("Search your photos", color = Muted)
-                    inner()
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (query.isEmpty()) Text("Search your photos", color = Muted)
+                        inner()
+                    }
                 },
             )
             if (query.isNotEmpty()) {

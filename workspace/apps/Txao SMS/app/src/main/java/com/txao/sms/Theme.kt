@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -43,9 +44,11 @@ fun TxaoTheme(content: @Composable () -> Unit) {
             Modifier
                 .fillMaxSize()
                 .background(Ink)
-                .background(Brush.radialGradient(listOf(Color(0x8CB79CFF), Color.Transparent), center = Offset(1000f, 2200f), radius = 1100f))
-                .background(Brush.radialGradient(listOf(Color(0x66D7A6C6), Color.Transparent), center = Offset(0f, 2000f), radius = 800f))
-                .background(Brush.radialGradient(listOf(Color(0x668FA3D6), Color.Transparent), center = Offset(100f, 100f), radius = 800f)),
+                .drawBehind {
+                    drawRect(Brush.radialGradient(listOf(Color(0x8CB79CFF), Color.Transparent), Offset(size.width * 0.85f, size.height * 0.85f), size.width * 0.95f))
+                    drawRect(Brush.radialGradient(listOf(Color(0x66D7A6C6), Color.Transparent), Offset(0f, size.height * 0.77f), size.width * 0.7f))
+                    drawRect(Brush.radialGradient(listOf(Color(0x668FA3D6), Color.Transparent), Offset(size.width * 0.08f, size.height * 0.04f), size.width * 0.7f))
+                },
         ) { CompositionLocalProvider(LocalContentColor provides scheme.onBackground) { content() } }
     }
 }

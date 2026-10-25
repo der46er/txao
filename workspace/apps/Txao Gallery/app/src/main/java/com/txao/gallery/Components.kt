@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,13 +58,13 @@ fun Thumb(
             Image(it, item.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
         if (item.isVideo) {
-            Box(
+            Row(
                 Modifier.align(Alignment.BottomStart).padding(4.dp)
-                    .clip(RoundedCornerShape(50)).background(Color(0x99000000)).padding(horizontal = 6.dp, vertical = 2.dp),
-                contentAlignment = Alignment.Center,
+                    .clip(RoundedCornerShape(50)).background(Color(0x99000000)).padding(start = 3.dp, end = 7.dp, top = 2.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(12.dp))
-                Text(formatDuration(item.durationMs), color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp))
+                Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                Text(formatDuration(item.durationMs), color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(start = 2.dp))
             }
         }
         if (favorite) {
@@ -73,7 +74,7 @@ fun Thumb(
             )
         }
         if (selected == true) {
-            Box(Modifier.fillMaxSize().background(Color(0x66FFFFFF)))
+            Box(Modifier.fillMaxSize().background(Color(0x55CDB8FF)))
         }
         if (selected != null) {
             Box(
