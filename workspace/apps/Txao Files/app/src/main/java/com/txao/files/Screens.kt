@@ -216,7 +216,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                         }
                     } else if (layout == FolderLayout.Grid && !(searching && query.isNotBlank())) {
                         LazyVerticalGrid(
-                            GridCells.Adaptive(76.dp),
+                            GridCells.Fixed(4),
                             Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                         ) {
@@ -225,7 +225,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                     onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
                                     onLong = { selected = toggle(selected, e) })
                             }
-                            item { Spacer(Modifier.height(72.dp)) }
+                            item { Spacer(Modifier.height(100.dp)) }
                         }
                     } else {
                         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 6.dp)) {
@@ -234,7 +234,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                     onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
                                     onLong = { selected = toggle(selected, e) })
                             }
-                            item { Spacer(Modifier.height(72.dp)) }
+                            item { Spacer(Modifier.height(100.dp)) }
                         }
                     }
                 }
@@ -269,7 +269,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
 
         if (tab == HomeTab.Files && !selecting) {
             var fabMenu by remember { mutableStateOf(false) }
-            Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 16.dp, bottom = 72.dp)) {
+            Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 16.dp, bottom = 92.dp)) {
                 Box(
                     Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF8E9BD0)).clickable { fabMenu = true },
                     contentAlignment = Alignment.Center,
@@ -519,9 +519,9 @@ private fun GridTile(e: Entry, selected: Boolean, onClick: () -> Unit, onLong: (
             .combinedClickable(onClick = onClick, onLongClick = onLong).padding(vertical = 8.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FileGlyph(e.file, e.isDir, 46.dp)
+        FileGlyph(e.file, e.isDir, 58.dp)
         Spacer(Modifier.height(4.dp))
-        Text(e.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        Text(e.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 

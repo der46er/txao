@@ -2,6 +2,8 @@
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
+    <!-- kept inside the adaptive-icon safe zone (about 62% of the canvas) -->
+    <group android:scaleX="0.7" android:scaleY="0.7" android:pivotX="54" android:pivotY="54">
     <path android:pathData="M30,28H46L52,35H78A6,6 0 0 1 84,41V72A6,6 0 0 1 78,78H30A6,6 0 0 1 24,72V34A6,6 0 0 1 30,28z" android:strokeWidth="1" android:strokeColor="#80FFFFFF">
         <aapt:attr name="android:fillColor">
             <gradient android:type="linear" android:startX="0" android:startY="28" android:endX="0" android:endY="78">
@@ -18,4 +20,5 @@
             </gradient>
         </aapt:attr>
     </path>
+    </group>
 </vector>
