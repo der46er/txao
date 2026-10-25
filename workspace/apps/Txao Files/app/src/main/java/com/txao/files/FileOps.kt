@@ -10,6 +10,8 @@ import android.os.storage.StorageManager
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.util.Locale
 
 data class Entry(
@@ -184,4 +186,39 @@ fun recentPage(context: Context, offset: Int, limit: Int, showHidden: Boolean): 
         return RecentPage(recentFiles(Environment.getExternalStorageDirectory(), showHidden, 60), 0, true)
     }
     return RecentPage(out, next, false)
+}
+
+/**
+ * Files ready to hand to the share sheet: plain files as they are, folders zipped into the app cache
+ * (the cache is wiped at the start of every share, so nothing piles up).
+ */
+fun prepareShare(context: Context, files: List<File>): List<File> {
+    val dir = File(context.cacheDir, "share")
+    dir.deleteRecursively()
+    dir.mkdirs()
+    return files.mapNotNull { f ->
+        when {
+            f.isFile -> f
+            f.isDirectory -> runCatching { zipFolder(f, File(dir, f.name + ".zip")) }.getOrNull()
+            else -> null
+        }
+    }
+}
+
+private fun zipFolder(folder: File, target: File): File {
+    ZipOutputStream(target.outputStream().buffered()).use { zip ->
+        folder.walkTopDown().forEach { f ->
+            val name = folder.name + "/" + f.relativeTo(folder).path.replace(File.separatorChar, '/')
+            when {
+                f == folder -> zip.putNextEntry(ZipEntry(folder.name + "/")).also { zip.closeEntry() }
+                f.isDirectory -> zip.putNextEntry(ZipEntry("$name/")).also { zip.closeEntry() }
+                f.isFile -> {
+                    zip.putNextEntry(ZipEntry(name))
+                    runCatching { f.inputStream().use { it.copyTo(zip) } }
+                    zip.closeEntry()
+                }
+            }
+        }
+    }
+    return target
 }

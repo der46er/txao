@@ -193,7 +193,15 @@ private fun Browser(prefs: Prefs, folderColors: FolderColors) {
                                 count = selected.size,
                                 onClose = { selected = emptySet() },
                                 onSelectAll = { selected = (if (searching) results else entries).map { it.file.path }.toSet() },
-                                onShare = { shareFiles(ctx, selected.map(::File)); selected = emptySet() },
+                                onShare = {
+                                    val files = selected.map(::File)
+                                    selected = emptySet()
+                                    if (files.any { it.isDirectory }) toast("Zipping folders to share…")
+                                    scope.launch {
+                                        val ready = withContext(Dispatchers.IO) { prepareShare(ctx, files) }
+                                        if (ready.isEmpty()) toast("Nothing to share") else shareFiles(ctx, ready)
+                                    }
+                                },
                                 onCopy = { clip = Clip(selected.map(::File), false); selected = emptySet(); toast("Copied. Use + to paste.") },
                                 onCut = { clip = Clip(selected.map(::File), true); selected = emptySet(); toast("Cut. Use + to paste.") },
                                 onRename = { dialog = Dialog.Rename(File(selected.first())) },

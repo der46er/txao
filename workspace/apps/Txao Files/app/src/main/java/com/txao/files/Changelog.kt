@@ -7,6 +7,10 @@ data class Release(val version: String, val notes: List<String>)
 /** Release notes, newest first. Add an entry here with every version bump. */
 object Changelog {
     val releases = listOf(
+        Release("1.3.1", listOf(
+            "Sharing a folder now works: it is zipped and shared as one file",
+            "Sharing several files and folders at once",
+        )),
         Release("1.3.0", listOf(
             "Recents loads 20 files at a time and fills in as you scroll",
             "Color any folder: 10 default colors or your own hex code",
