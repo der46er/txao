@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +28,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class PlayerViewModel(app: Application) : AndroidViewModel(app) {
+    /** Songs that are not hidden. */
     var tracks by mutableStateOf<List<Track>>(emptyList()); private set
+    private var allTracks: List<Track> = emptyList()
+    private val libPrefs = LibraryPrefs(app)
+    var hiddenSongIds by mutableStateOf(libPrefs.hiddenSongs); private set
+    var hiddenAlbumKeys by mutableStateOf(libPrefs.hiddenAlbums); private set
+    var albumSort by mutableIntStateOf(libPrefs.albumSort); private set
+    var albumOrder by mutableStateOf(libPrefs.albumOrder); private set
+    /** Bumped when an artist picture changes so it reloads. */
+    var artistImageRev by mutableIntStateOf(0); private set
     var loaded by mutableStateOf(false); private set
 
     var currentId by mutableStateOf<Long?>(null); private set
@@ -78,11 +88,40 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // Query off the main thread; large libraries would otherwise block the UI.
             val list = withContext(Dispatchers.IO) { Overrides.apply(getApplication(), MediaStoreSource.loadTracks(getApplication())) }
+            allTracks = list
             byId = list.associateBy { it.id }
-            tracks = list
+            applyHidden()
             loaded = true
             controller?.let { sync(it) }
         }
+    }
+
+    private fun applyHidden() {
+        val hiddenAlbums = Library.albums(allTracks).filter { it.key in hiddenAlbumKeys }.flatMap { a -> a.tracks.map { it.id } }.toSet()
+        tracks = allTracks.filter { it.id !in hiddenSongIds && it.id !in hiddenAlbums }
+    }
+
+    fun hideSong(t: Track) { hiddenSongIds = hiddenSongIds + t.id; libPrefs.hiddenSongs = hiddenSongIds; applyHidden() }
+    fun restoreSong(id: Long) { hiddenSongIds = hiddenSongIds - id; libPrefs.hiddenSongs = hiddenSongIds; applyHidden() }
+    fun hideAlbum(key: String) { hiddenAlbumKeys = hiddenAlbumKeys + key; libPrefs.hiddenAlbums = hiddenAlbumKeys; applyHidden() }
+    fun restoreAlbum(key: String) { hiddenAlbumKeys = hiddenAlbumKeys - key; libPrefs.hiddenAlbums = hiddenAlbumKeys; applyHidden() }
+
+    /** Hidden items for the settings list. */
+    fun hiddenSongList(): List<Track> = allTracks.filter { it.id in hiddenSongIds }
+    fun hiddenAlbumList(): List<Album> = Library.albums(allTracks).filter { it.key in hiddenAlbumKeys }
+
+    fun setAlbumSort(mode: Int) { albumSort = mode; libPrefs.albumSort = mode }
+    fun setAlbumOrder(keys: List<String>) {
+        albumOrder = keys; libPrefs.albumOrder = keys
+        albumSort = Library.SORT_CUSTOM; libPrefs.albumSort = Library.SORT_CUSTOM
+    }
+
+    /** Set or rename an artist's picture. [bytes] null keeps the current picture (and moves it on a rename). */
+    fun updateArtistImage(oldName: String, newName: String, bytes: ByteArray?) {
+        val ctx = getApplication<Application>()
+        if (bytes != null) ArtistImages.save(ctx, newName, bytes) else ArtistImages.rename(ctx, oldName, newName)
+        Art.clear()
+        artistImageRev++
     }
 
     private fun sync(p: Player) {

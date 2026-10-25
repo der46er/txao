@@ -14,7 +14,11 @@ data class Track(
     val mime: String = "",
 )
 
-data class Album(val id: Long, val name: String, val artist: String, val tracks: List<Track>)
+data class Album(val id: Long, val name: String, val artist: String, val tracks: List<Track>) {
+    /** Stable identity used for hiding and custom ordering. */
+    val key: String get() = "$id|$name"
+    val year: Int get() = tracks.maxOf { it.year }
+}
 
 data class Artist(val name: String, val tracks: List<Track>)
 
@@ -36,6 +40,25 @@ object Library {
                 track.artist.contains(word, ignoreCase = true) ||
                 track.album.contains(word, ignoreCase = true)
         }
+    }
+
+    /** "1 song", "2 songs". */
+    fun plural(n: Int, one: String, many: String = one + "s") = "$n ${if (n == 1) one else many}"
+
+    const val SORT_NAME = 0
+    const val SORT_ARTIST = 1
+    const val SORT_YEAR = 2
+    const val SORT_CUSTOM = 3
+
+    /** Orders [albums] by [mode]; for [SORT_CUSTOM] by [custom] (keys), with albums not yet placed at the end by name. */
+    fun sortAlbums(albums: List<Album>, mode: Int, custom: List<String>): List<Album> = when (mode) {
+        SORT_ARTIST -> albums.sortedWith(compareBy({ it.artist.lowercase() }, { it.name.lowercase() }))
+        SORT_YEAR -> albums.sortedWith(compareByDescending<Album> { it.year }.thenBy { it.name.lowercase() })
+        SORT_CUSTOM -> {
+            val pos = custom.withIndex().associate { it.value to it.index }
+            albums.sortedWith(compareBy<Album> { pos[it.key] ?: Int.MAX_VALUE }.thenBy { it.name.lowercase() })
+        }
+        else -> albums.sortedBy { it.name.lowercase() }
     }
 
     fun albums(tracks: List<Track>): List<Album> =
