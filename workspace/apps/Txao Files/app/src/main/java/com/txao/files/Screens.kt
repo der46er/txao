@@ -51,7 +51,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val dateFmt by lazy { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
+private val dateFmt by lazy { SimpleDateFormat("d MMM yyyy", Locale.getDefault()) }
 
 private enum class HomeTab { Files, Recents, Locked }
 

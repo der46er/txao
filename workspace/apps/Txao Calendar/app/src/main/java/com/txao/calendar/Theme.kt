@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -49,9 +50,11 @@ fun TxaoTheme(content: @Composable () -> Unit) {
 fun GlassBackground(content: @Composable () -> Unit) {
     Box(
         Modifier.fillMaxSize().background(Ink)
-            .background(Brush.radialGradient(listOf(Color(0x55B79CFF), Color.Transparent), center = Offset(900f, 1900f), radius = 1100f))
-            .background(Brush.radialGradient(listOf(Color(0x40D7A6C6), Color.Transparent), center = Offset(0f, 1700f), radius = 900f))
-            .background(Brush.radialGradient(listOf(Color(0x408FA3D6), Color.Transparent), center = Offset(100f, 100f), radius = 900f)),
+            .drawBehind {
+                drawRect(Brush.radialGradient(listOf(Color(0x8CB79CFF), Color.Transparent), Offset(size.width * 0.85f, size.height * 0.85f), size.width * 0.95f))
+                drawRect(Brush.radialGradient(listOf(Color(0x66D7A6C6), Color.Transparent), Offset(0f, size.height * 0.77f), size.width * 0.7f))
+                drawRect(Brush.radialGradient(listOf(Color(0x668FA3D6), Color.Transparent), Offset(size.width * 0.08f, size.height * 0.04f), size.width * 0.7f))
+            },
     ) { content() }
 }
 

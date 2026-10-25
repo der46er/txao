@@ -3,6 +3,7 @@ package com.txao.authenticator
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -17,13 +18,13 @@ import androidx.compose.ui.unit.dp
 
 val TxaoBg = Color(0xFF0B0E14)
 val Lavender = Color(0xFFCDB8FF)
-val GlassFill = Color(0xCC1A1F2E)
-val GlassStroke = Color(0x33FFFFFF)
+val GlassFill = Color(0x14FFFFFF)
+val GlassStroke = Color(0x24FFFFFF)
 val GlassShape = RoundedCornerShape(20.dp)
 
 /** Search pill and bars, the same translucent surface the Files and Phone apps use. */
-val BarSurface = Color(0xCC2A2F3E)
-val FabColor = Color(0xFF8E9BD0)
+val BarSurface = Color(0x1FFFFFFF)
+val FabColor = Color(0xFFCDB8FF)
 val GlassBorder = BorderStroke(1.dp, GlassStroke)
 
 private val Scheme = darkColorScheme(
@@ -46,11 +47,15 @@ private val Scheme = darkColorScheme(
 
 @Composable
 fun TxaoTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = Scheme, content = content)
+    MaterialTheme(colorScheme = Scheme) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides Scheme.onBackground, content = content,
+        )
+    }
 }
 
 /** Translucent "glass" card surface shared by the Txao apps. */
-fun Modifier.glass(): Modifier = this.background(GlassFill, GlassShape).border(GlassBorder, GlassShape)
+fun Modifier.glass(): Modifier = this.clip(GlassShape).background(GlassFill).border(GlassBorder, GlassShape)
 
 /** The suite wallpaper: deep blue-black with soft lavender, rose and blue glows. */
 @Composable
