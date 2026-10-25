@@ -110,7 +110,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun hiddenSongList(): List<Track> = allTracks.filter { it.id in hiddenSongIds }
     fun hiddenAlbumList(): List<Album> = Library.albums(allTracks).filter { it.key in hiddenAlbumKeys }
 
+    @JvmName("applyAlbumSort")
     fun setAlbumSort(mode: Int) { albumSort = mode; libPrefs.albumSort = mode }
+    @JvmName("applyAlbumOrder")
     fun setAlbumOrder(keys: List<String>) {
         albumOrder = keys; libPrefs.albumOrder = keys
         albumSort = Library.SORT_CUSTOM; libPrefs.albumSort = Library.SORT_CUSTOM
