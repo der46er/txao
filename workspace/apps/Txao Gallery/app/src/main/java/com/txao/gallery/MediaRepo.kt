@@ -32,6 +32,7 @@ class MediaRepo(private val context: Context) {
             add(MediaStore.MediaColumns.DATE_TAKEN)
             add(MediaStore.MediaColumns.DURATION)
         }
+        if (Build.VERSION.SDK_INT >= 30) add(MediaStore.MediaColumns.DATE_EXPIRES)
     }.toTypedArray()
 
     private val selection =
@@ -65,6 +66,7 @@ class MediaRepo(private val context: Context) {
             val iBucketName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
             val iTaken = if (Build.VERSION.SDK_INT >= 29) c.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN) else -1
             val iDur = if (Build.VERSION.SDK_INT >= 29) c.getColumnIndex(MediaStore.MediaColumns.DURATION) else -1
+            val iExp = if (Build.VERSION.SDK_INT >= 30) c.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES) else -1
             while (c.moveToNext()) {
                 val video = c.getInt(iType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
                 val id = c.getLong(iId)
@@ -84,6 +86,7 @@ class MediaRepo(private val context: Context) {
                         durationMs = if (iDur >= 0) c.getLong(iDur) else 0L,
                         albumId = c.getLong(iBucket),
                         albumName = c.getString(iBucketName) ?: "Unknown",
+                        expiresMs = if (iExp >= 0 && !c.isNull(iExp)) c.getLong(iExp) * 1000 else 0L,
                     )
                 )
             }
