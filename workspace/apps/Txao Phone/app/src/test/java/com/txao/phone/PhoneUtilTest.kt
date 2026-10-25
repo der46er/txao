@@ -99,3 +99,20 @@ class ImPlatformTest {
         org.junit.Assert.assertEquals("Matrix", ImEntry("Matrix", "@a:b").displayPlatform)
     }
 }
+
+class DialCodeTest {
+    @org.junit.Test fun classifiesCodes() {
+        org.junit.Assert.assertEquals(DialCode.Imei, DialCode.parse("*#06#"))
+        org.junit.Assert.assertEquals(DialCode.Secret("4636"), DialCode.parse("*#*#4636#*#*"))
+        org.junit.Assert.assertEquals(DialCode.Ussd("*123#"), DialCode.parse("*123#"))
+        org.junit.Assert.assertEquals(DialCode.Ussd("#31#"), DialCode.parse("#31#"))
+        org.junit.Assert.assertEquals(DialCode.Ussd("**21*+436641234567#"), DialCode.parse("**21*+436641234567#"))
+        org.junit.Assert.assertEquals(DialCode.None, DialCode.parse("0664 1234567"))
+        org.junit.Assert.assertEquals(DialCode.None, DialCode.parse("#"))
+        org.junit.Assert.assertEquals(DialCode.None, DialCode.parse("123#"))
+    }
+
+    @org.junit.Test fun tiktokLink() {
+        org.junit.Assert.assertEquals("https://www.tiktok.com/@martin", ImPlatform.TikTok.link("@martin"))
+    }
+}

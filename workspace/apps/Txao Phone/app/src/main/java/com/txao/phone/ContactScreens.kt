@@ -68,7 +68,7 @@ fun imIcon(p: ImPlatform): Int = when (p) {
     ImPlatform.WhatsApp -> R.drawable.ic_im_whatsapp; ImPlatform.Telegram -> R.drawable.ic_im_telegram
     ImPlatform.Signal -> R.drawable.ic_im_signal; ImPlatform.Messenger -> R.drawable.ic_im_messenger
     ImPlatform.Instagram -> R.drawable.ic_im_instagram; ImPlatform.Discord -> R.drawable.ic_im_discord
-    ImPlatform.Snapchat -> R.drawable.ic_im_snapchat; ImPlatform.X -> R.drawable.ic_im_x
+    ImPlatform.Snapchat -> R.drawable.ic_im_snapchat; ImPlatform.X -> R.drawable.ic_im_x; ImPlatform.TikTok -> R.drawable.ic_im_tiktok
     ImPlatform.Skype -> R.drawable.ic_im_skype; ImPlatform.Other -> R.drawable.ic_im_other
 }
 
@@ -127,6 +127,12 @@ fun ContactPage(
     val photo = rememberPhoto(details?.photoUri, 1024)
     val bg = rememberPhoto(details?.background, 1280)
     val place = PhoneUtil.countryOf(primary)
+    val pickBackground = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        val d = details
+        if (uri != null && d != null) {
+            Photos.encodeForContact(ctx, uri, 1280)?.let { Backgrounds.save(ctx, d.contactId, numbers, it); reload++ }
+        }
+    }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 48.dp)) {
         item {
@@ -173,6 +179,7 @@ fun ContactPage(
                 ActionChip(Icons.Filled.Share, "Share") {
                     launch(ctx, Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "$name\n${numbers.joinToString("\n")}"), null))
                 }
+                if (details != null) ActionChip(Icons.Filled.Wallpaper, "Background") { pickBackground.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                 ActionChip(Icons.Filled.Block, if (blocked) "Unblock" else "Block", Danger) {
                     val ok = if (blocked) Data.unblock(ctx, primary) else Data.block(ctx, primary)
                     if (ok) blocked = !blocked else note = "Make Txao Phone your default phone app to block numbers."
