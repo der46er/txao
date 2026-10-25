@@ -1,6 +1,9 @@
 package com.txao.files
 
+import android.app.Activity
+import android.app.KeyguardManager
 import android.content.Context
+import android.os.Environment
 import android.os.StatFs
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +53,7 @@ import java.util.Locale
 
 private val dateFmt by lazy { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
 
-private enum class HomeTab { Files, Recents, Storage }
+private enum class HomeTab { Files, Recents, Locked }
 
 private class Clip(val files: List<File>, val move: Boolean)
 
@@ -120,6 +124,12 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     var sortField by remember { mutableStateOf(prefs.sortField) }
     var sortAsc by remember { mutableStateOf(prefs.sortAscending) }
     var dialog by remember { mutableStateOf<Dialog?>(null) }
+    var unlocked by remember { mutableStateOf(false) }
+    val vaultDir = remember { File(ctx.filesDir, "locked").apply { mkdirs() } }
+    val auth = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == Activity.RESULT_OK) unlocked = true
+    }
+    LaunchedEffect(tab) { if (tab != HomeTab.Locked) unlocked = false }
 
     val vol = vols.lastOrNull { path == it.root.path || path.startsWith(it.root.path + "/") } ?: vols[0]
     val dir = File(path)
@@ -151,7 +161,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
         Column(Modifier.fillMaxSize().systemBarsPadding()) {
             when (tab) {
                 HomeTab.Files -> {
-                    TopPill(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    TopPill(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                         if (selecting) {
                             SelectionBar(
                                 count = selected.size,
@@ -161,6 +171,11 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                 onCopy = { clip = Clip(selected.map(::File), false); selected = emptySet(); toast("Copied. Use + to paste.") },
                                 onCut = { clip = Clip(selected.map(::File), true); selected = emptySet(); toast("Cut. Use + to paste.") },
                                 onRename = { dialog = Dialog.Rename(File(selected.first())) },
+                                onLock = {
+                                    val ok = selected.count { transfer(File(it), vaultDir, true) }
+                                    toast(if (ok == selected.size) "Moved to Locked" else "Some items could not be locked")
+                                    selected = emptySet(); refresh++
+                                },
                                 onDelete = { dialog = Dialog.Delete(selected.map(::File)) },
                             )
                         } else {
@@ -201,16 +216,16 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                         }
                     } else if (layout == FolderLayout.Grid && !(searching && query.isNotBlank())) {
                         LazyVerticalGrid(
-                            GridCells.Adaptive(84.dp),
+                            GridCells.Adaptive(76.dp),
                             Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                         ) {
                             items(showing, key = { it.file.path }) { e ->
                                 GridTile(e, e.file.path in selected,
                                     onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
                                     onLong = { selected = toggle(selected, e) })
                             }
-                            item { Spacer(Modifier.height(88.dp)) }
+                            item { Spacer(Modifier.height(72.dp)) }
                         }
                     } else {
                         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 6.dp)) {
@@ -219,7 +234,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                     onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
                                     onLong = { selected = toggle(selected, e) })
                             }
-                            item { Spacer(Modifier.height(88.dp)) }
+                            item { Spacer(Modifier.height(72.dp)) }
                         }
                     }
                 }
@@ -227,29 +242,38 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                     val recents by produceState(emptyList<Entry>(), vol, showHidden, refresh) {
                         value = withContext(Dispatchers.IO) { recentFiles(vols[0].root, showHidden) }
                     }
-                    Text("Recents", fontSize = 28.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp))
-                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
+                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)) {
+                        items(vols, key = { "vol:" + it.root.path }) { v ->
+                            StorageCard(v) { path = v.root.path; tab = HomeTab.Files }
+                        }
+                        item { Text("Recent files", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) }
                         items(recents, key = { it.file.path }) { e ->
                             ListRow(e, false, subtitleParent = true, onClick = { open(e) }, onLong = {})
                         }
                     }
                 }
-                HomeTab.Storage -> StorageTab(vols, onOpen = { v -> path = v.root.path; tab = HomeTab.Files })
+                HomeTab.Locked -> LockedTab(
+                    vault = vaultDir, refresh = refresh, unlocked = unlocked,
+                    onUnlock = {
+                        val km = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                        @Suppress("DEPRECATION")
+                        val i = if (km.isDeviceSecure) km.createConfirmDeviceCredentialIntent("Locked", "Unlock your private files") else null
+                        if (i != null) auth.launch(i) else unlocked = true
+                    },
+                    onOpen = { e -> if (e.isDir) toast("Long-press a folder to move it out or delete it") else open(e) },
+                    onLong = { dialog = Dialog.Vault(it.file) },
+                )
             }
-            NavigationBar(containerColor = NavSurface, contentColor = Color.White) {
-                NavigationBarItem(tab == HomeTab.Files, { tab = HomeTab.Files }, { Icon(Icons.Filled.Folder, null) }, label = { Text("Files") }, colors = navColors())
-                NavigationBarItem(tab == HomeTab.Recents, { tab = HomeTab.Recents }, { Icon(Icons.Filled.Schedule, null) }, label = { Text("Recents") }, colors = navColors())
-                NavigationBarItem(tab == HomeTab.Storage, { tab = HomeTab.Storage }, { Icon(Icons.Filled.Storage, null) }, label = { Text("Storage") }, colors = navColors())
-            }
+            BottomBar(tab) { tab = it }
         }
 
         if (tab == HomeTab.Files && !selecting) {
             var fabMenu by remember { mutableStateOf(false) }
-            Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 18.dp, bottom = 96.dp)) {
+            Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 16.dp, bottom = 72.dp)) {
                 Box(
-                    Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF8E9BD0)).clickable { fabMenu = true },
+                    Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF8E9BD0)).clickable { fabMenu = true },
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.Add, "New", Modifier.size(32.dp), tint = Color(0xFF1C2140)) }
+                ) { Icon(Icons.Filled.Add, "New", Modifier.size(26.dp), tint = Color(0xFF1C2140)) }
                 DropdownMenu(fabMenu, { fabMenu = false }) {
                     DropdownMenuItem({ Text("New folder") }, { fabMenu = false; dialog = Dialog.NewFolder })
                     DropdownMenuItem({ Text("New file") }, { fabMenu = false; dialog = Dialog.NewFile })
@@ -298,6 +322,20 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
             },
             dismissButton = { TextButton({ dialog = null }) { Text("Cancel") } },
         )
+        is Dialog.Vault -> AlertDialog(
+            onDismissRequest = { dialog = null },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            title = { Text(d.file.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            confirmButton = {
+                TextButton({
+                    dialog = null
+                    val out = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).apply { mkdirs() }
+                    toast(if (transfer(d.file, out, true)) "Moved to Download" else "Could not move out")
+                    refresh++
+                }) { Text("Move to Download") }
+            },
+            dismissButton = { TextButton({ dialog = Dialog.Delete(listOf(d.file)) }) { Text("Delete", color = Color(0xFFFFB4AB)) } },
+        )
         null -> {}
     }
 }
@@ -307,23 +345,40 @@ private sealed interface Dialog {
     data object NewFile : Dialog
     data class Rename(val file: File) : Dialog
     data class Delete(val files: List<File>) : Dialog
+    data class Vault(val file: File) : Dialog
 }
 
 private fun toggle(set: Set<String>, e: Entry) = if (e.file.path in set) set - e.file.path else set + e.file.path
 
+/** Same translucent surface as the search pill, so bar and content read as one piece. */
 @Composable
-private fun navColors() = NavigationBarItemDefaults.colors(
-    selectedIconColor = Color.White,
-    selectedTextColor = Color(0xFFB4BEEB),
-    indicatorColor = Color(0xFF3A4366),
-    unselectedIconColor = Color(0xFFD6D9E8),
-    unselectedTextColor = Color(0xFFD6D9E8),
-)
+private fun BottomBar(tab: HomeTab, onSelect: (HomeTab) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(100.dp)).background(BarSurface).padding(4.dp),
+    ) {
+        for ((t, icon, label) in listOf(
+            Triple(HomeTab.Files, Icons.Filled.Folder, "Files"),
+            Triple(HomeTab.Recents, Icons.Filled.Schedule, "Recents"),
+            Triple(HomeTab.Locked, Icons.Filled.Lock, "Locked"),
+        )) {
+            val on = tab == t
+            Column(
+                Modifier.weight(1f).clip(RoundedCornerShape(100.dp))
+                    .background(if (on) Color(0x553A4366) else Color.Transparent)
+                    .clickable { onSelect(t) }.padding(vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(icon, null, Modifier.size(22.dp), tint = if (on) Color(0xFFB4BEEB) else Color(0xFFD6D9E8))
+                Text(label, fontSize = 11.sp, color = if (on) Color(0xFFB4BEEB) else Color(0xFFD6D9E8))
+            }
+        }
+    }
+}
 
 @Composable
 private fun TopPill(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
     Row(
-        modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(100.dp)).background(BarSurface).padding(horizontal = 6.dp),
+        modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(100.dp)).background(BarSurface).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
@@ -349,13 +404,13 @@ private fun RowScope.BrowseBar(
     if (searching) {
         IconButton(onCloseSearch) { Icon(Icons.Filled.ArrowBack, "Close search", tint = Color.White) }
     } else {
-        Icon(Icons.Filled.Search, "Search", Modifier.padding(start = 12.dp).size(26.dp).clickable(onClick = onStartSearch), tint = Color.White)
+        Icon(Icons.Filled.Search, "Search", Modifier.padding(start = 12.dp).size(22.dp).clickable(onClick = onStartSearch), tint = Color.White)
     }
     val focus = remember { FocusRequester() }
     LaunchedEffect(searching) { if (searching) runCatching { focus.requestFocus() } }
     BasicTextField(
         value = query, onValueChange = onQuery, singleLine = true,
-        textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
+        textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
         cursorBrush = SolidColor(Accent),
         modifier = Modifier.weight(1f).padding(horizontal = 14.dp).focusRequester(focus).let {
             if (searching) it else it.clickable(onClick = onStartSearch)
@@ -363,7 +418,7 @@ private fun RowScope.BrowseBar(
         enabled = searching,
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.CenterStart) {
-                if (query.isEmpty()) Text("Search", color = Color(0xFF9EA3B8), fontSize = 20.sp)
+                if (query.isEmpty()) Text("Search", color = Color(0xFF9EA3B8), fontSize = 16.sp)
                 inner()
             }
         },
@@ -402,11 +457,11 @@ private fun RowScope.BrowseBar(
 @Composable
 private fun RowScope.SelectionBar(
     count: Int, onClose: () -> Unit, onSelectAll: () -> Unit, onShare: () -> Unit,
-    onCopy: () -> Unit, onCut: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit,
+    onCopy: () -> Unit, onCut: () -> Unit, onRename: () -> Unit, onLock: () -> Unit, onDelete: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     BarIcon(Icons.Filled.Close, "Cancel selection", onClose)
-    Text("$count selected", Modifier.weight(1f), fontSize = 18.sp, maxLines = 1)
+    Text("$count selected", Modifier.weight(1f), fontSize = 16.sp, maxLines = 1)
     BarIcon(Icons.Filled.Share, "Share", onShare)
     BarIcon(Icons.Filled.Delete, "Delete", onDelete)
     Box {
@@ -415,6 +470,7 @@ private fun RowScope.SelectionBar(
             DropdownMenuItem({ Text("Select all") }, { onSelectAll(); menu = false })
             DropdownMenuItem({ Text("Copy") }, { onCopy(); menu = false })
             DropdownMenuItem({ Text("Cut") }, { onCut(); menu = false })
+            DropdownMenuItem({ Text("Move to Locked") }, { onLock(); menu = false })
             if (count == 1) DropdownMenuItem({ Text("Rename") }, { onRename(); menu = false })
         }
     }
@@ -426,14 +482,14 @@ private fun Crumbs(vols: List<Volume>, vol: Volume, path: String, onOpen: (Strin
     var volMenu by remember { mutableStateOf(false) }
     val rel = path.removePrefix(vol.root.path).trim('/').split('/').filter { it.isNotEmpty() }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
             Surface(
                 shape = RoundedCornerShape(100.dp), color = BarSurface, border = BorderStroke(1.dp, Color(0x40FFFFFF)),
                 modifier = Modifier.clip(RoundedCornerShape(100.dp)).clickable { if (vols.size > 1) volMenu = true else onOpen(vol.root.path) },
-            ) { Text(vol.label, Modifier.padding(horizontal = 18.dp, vertical = 12.dp), fontSize = 20.sp, color = Color.White) }
+            ) { Text(vol.label, Modifier.padding(horizontal = 14.dp, vertical = 8.dp), fontSize = 15.sp, color = Color.White) }
             DropdownMenu(volMenu, { volMenu = false }) {
                 for (v in vols) DropdownMenuItem({ Text(v.label) }, { volMenu = false; onOpen(v.root.path) })
             }
@@ -444,9 +500,9 @@ private fun Crumbs(vols: List<Volume>, vol: Volume, path: String, onOpen: (Strin
             val target = acc
             Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFFB4BEEB))
             Text(
-                seg, fontSize = 20.sp, maxLines = 1,
+                seg, fontSize = 15.sp, maxLines = 1,
                 color = if (i == rel.lastIndex) Color(0xFFB4BEEB) else Color.White,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onOpen(target) }.padding(horizontal = 6.dp, vertical = 8.dp),
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onOpen(target) }.padding(horizontal = 4.dp, vertical = 6.dp),
             )
         }
     }
@@ -460,12 +516,12 @@ private fun Modifier.selectedBg(selected: Boolean, radius: Int = 16): Modifier =
 private fun GridTile(e: Entry, selected: Boolean, onClick: () -> Unit, onLong: () -> Unit) {
     Column(
         Modifier.padding(2.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLong).padding(vertical = 10.dp, horizontal = 4.dp),
+            .combinedClickable(onClick = onClick, onLongClick = onLong).padding(vertical = 8.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FileGlyph(e.file, e.isDir, 68.dp)
-        Spacer(Modifier.height(6.dp))
-        Text(e.name, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        FileGlyph(e.file, e.isDir, 46.dp)
+        Spacer(Modifier.height(4.dp))
+        Text(e.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
@@ -474,51 +530,78 @@ private fun GridTile(e: Entry, selected: Boolean, onClick: () -> Unit, onLong: (
 private fun ListRow(e: Entry, selected: Boolean, subtitleParent: Boolean, onClick: () -> Unit, onLong: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLong).padding(horizontal = 8.dp, vertical = 9.dp),
+            .combinedClickable(onClick = onClick, onLongClick = onLong).padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FileGlyph(e.file, e.isDir, 44.dp)
-        Spacer(Modifier.width(16.dp))
+        FileGlyph(e.file, e.isDir, 36.dp)
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(e.name, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(e.name, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val sub = if (subtitleParent) e.file.parentFile?.name.orEmpty() else if (e.isDir) itemsLabel(e.items) else humanSize(e.size)
-            Text(sub, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(sub, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (!e.isDir) {
             Spacer(Modifier.width(8.dp))
-            Text(dateFmt.format(Date(e.modified)), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(dateFmt.format(Date(e.modified)), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun StorageTab(vols: List<Volume>, onOpen: (Volume) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
-        Text("Storage", fontSize = 28.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 16.dp))
-        for (v in vols) {
-            val stat = remember(v) { runCatching { StatFs(v.root.path) }.getOrNull() }
-            val total = stat?.let { it.blockCountLong * it.blockSizeLong } ?: 0L
-            val free = stat?.let { it.availableBlocksLong * it.blockSizeLong } ?: 0L
-            Column(
-                Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(28.dp)).background(BarSurface)
-                    .clickable { onOpen(v) }.padding(20.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Storage, null, tint = FolderTint)
-                    Spacer(Modifier.width(12.dp))
-                    Text(v.label, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                }
-                if (total > 0) {
-                    Spacer(Modifier.height(14.dp))
-                    LinearProgressIndicator(
-                        progress = { ((total - free).toFloat() / total).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(100.dp)),
-                        color = Accent, trackColor = Color(0x33FFFFFF),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text("${humanSize(total - free)} used of ${humanSize(total)} · ${humanSize(free)} free", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+private fun StorageCard(v: Volume, onOpen: () -> Unit) {
+    val stat = remember(v) { runCatching { StatFs(v.root.path) }.getOrNull() }
+    val total = stat?.let { it.blockCountLong * it.blockSizeLong } ?: 0L
+    val free = stat?.let { it.availableBlocksLong * it.blockSizeLong } ?: 0L
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp).clip(RoundedCornerShape(20.dp)).background(BarSurface)
+            .clickable(onClick = onOpen).padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Storage, null, Modifier.size(20.dp), tint = FolderTint)
+            Spacer(Modifier.width(10.dp))
+            Text(v.label, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        }
+        if (total > 0) {
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { ((total - free).toFloat() / total).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(100.dp)),
+                color = Accent, trackColor = Color(0x33FFFFFF),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text("${humanSize(total - free)} used of ${humanSize(total)} · ${humanSize(free)} free", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Private files kept inside the app and behind the device lock (PIN, pattern or biometrics). */
+@Composable
+private fun ColumnScope.LockedTab(
+    vault: File, refresh: Int, unlocked: Boolean, onUnlock: () -> Unit, onOpen: (Entry) -> Unit, onLong: (Entry) -> Unit,
+) {
+    if (!unlocked) {
+        Column(Modifier.weight(1f).fillMaxWidth().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Filled.Lock, null, Modifier.size(48.dp), tint = FolderTint)
+            Spacer(Modifier.height(12.dp))
+            Text("Locked", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(4.dp))
+            Text("Private files, protected by your phone lock. Select files and choose \"Move to Locked\".",
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = onUnlock, colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = AccentText)) { Text("Unlock") }
+        }
+        return
+    }
+    val vaultItems by produceState(emptyList<Entry>(), vault, refresh) {
+        value = withContext(Dispatchers.IO) { listDir(vault, true, SortField.Name, true) }
+    }
+    if (vaultItems.isEmpty()) {
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text("Nothing locked yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 6.dp)) {
+            items(vaultItems, key = { it.file.path }) { e -> ListRow(e, false, subtitleParent = false, onClick = { onOpen(e) }, onLong = { onLong(e) }) }
         }
     }
 }
