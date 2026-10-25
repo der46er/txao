@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -40,7 +41,7 @@ fun LockScreen(onUnlocked: () -> Unit, onPrompt: () -> Unit) {
         Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("AUTHENTICATOR", fontSize = 20.sp, letterSpacing = 2.sp, modifier = Modifier.padding(bottom = 24.dp))
+        Text("Authenticator", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 24.dp))
         Button(onClick = ::prompt) { Text("Unlock") }
     }
 }

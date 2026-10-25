@@ -25,9 +25,9 @@ class Settings(context: Context) {
     var clearClipboard by mutableStateOf(prefs.getBoolean("clearClipboard", true))
         private set
 
-    fun setHideCodes(v: Boolean) { hideCodes = v; prefs.edit().putBoolean("hideCodes", v).apply() }
-    fun setShowNext(v: Boolean) { showNext = v; prefs.edit().putBoolean("showNext", v).apply() }
-    fun setGroupDigits(v: Boolean) { groupDigits = v; prefs.edit().putBoolean("groupDigits", v).apply() }
-    fun setAppLock(v: Boolean) { appLock = v; prefs.edit().putBoolean("appLock", v).apply() }
-    fun setClearClipboard(v: Boolean) { clearClipboard = v; prefs.edit().putBoolean("clearClipboard", v).apply() }
+    @JvmName("updateHideCodes") fun setHideCodes(v: Boolean) { hideCodes = v; prefs.edit().putBoolean("hideCodes", v).apply() }
+    @JvmName("updateShowNext") fun setShowNext(v: Boolean) { showNext = v; prefs.edit().putBoolean("showNext", v).apply() }
+    @JvmName("updateGroupDigits") fun setGroupDigits(v: Boolean) { groupDigits = v; prefs.edit().putBoolean("groupDigits", v).apply() }
+    @JvmName("updateAppLock") fun setAppLock(v: Boolean) { appLock = v; prefs.edit().putBoolean("appLock", v).apply() }
+    @JvmName("updateClearClipboard") fun setClearClipboard(v: Boolean) { clearClipboard = v; prefs.edit().putBoolean("clearClipboard", v).apply() }
 }

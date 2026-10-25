@@ -35,9 +35,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val canLock = (context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure
     Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        Row(Modifier.padding(top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-            Text("SETTINGS", fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            Text("Settings", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
         Section("Codes") {
             SwitchRow("Hide codes", "Show dots until you tap a card", settings.hideCodes, settings::setHideCodes)
@@ -59,7 +59,7 @@ fun SettingsScreen(
             ActionRow("Export as plain text", "Unencrypted otpauth links. Handle with care", onExportPlain)
         }
         Section("About") {
-            Note("Txao Authenticator 1.1.0. Accounts never leave this phone unless you export them. No network access, no accounts, no analytics.")
+            Note("Txao Authenticator 1.2.1. Accounts never leave this phone unless you export them. No network access, no accounts, no analytics.")
         }
     }
 }
@@ -67,14 +67,14 @@ fun SettingsScreen(
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
     Text(title.uppercase(), fontSize = 12.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp, top = 16.dp, bottom = 8.dp))
+        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp, top = 14.dp, bottom = 6.dp))
     Column(Modifier.fillMaxWidth().glass().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) { content() }
 }
 
 @Composable
 private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = enabled) { onChange(!checked) }.padding(horizontal = 18.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().clickable(enabled = enabled) { onChange(!checked) }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -87,7 +87,7 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
 
 @Composable
 private fun ActionRow(title: String, subtitle: String, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 12.dp)) {
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp)) {
         Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

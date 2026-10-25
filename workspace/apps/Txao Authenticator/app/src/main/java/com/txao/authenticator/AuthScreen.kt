@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -187,6 +189,7 @@ fun AuthScreen(vm: AuthViewModel) {
 
     if (showAddChooser) {
         AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             onDismissRequest = { showAddChooser = false },
             title = { Text("Add account") },
             text = {
@@ -218,6 +221,7 @@ fun AuthScreen(vm: AuthViewModel) {
 
     pendingDelete?.let { acc ->
         AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             onDismissRequest = { pendingDelete = null },
             title = { Text("Remove ${acc.title}?") },
             text = {
@@ -240,6 +244,7 @@ fun AuthScreen(vm: AuthViewModel) {
             }
         } else {
             AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 onDismissRequest = { vm.incoming = null },
                 title = { Text("Add this account?") },
                 text = { Text("${parsed.title}${if (parsed.subtitle.isNotEmpty()) "\n${parsed.subtitle}" else ""}") },
@@ -251,6 +256,7 @@ fun AuthScreen(vm: AuthViewModel) {
 
     if (plainWarning) {
         AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             onDismissRequest = { plainWarning = false },
             title = { Text("Export without encryption?") },
             text = { Text("The file will contain every secret key in plain text. Anyone who gets it can generate your codes. Prefer the encrypted backup.") },
@@ -308,22 +314,22 @@ private fun HomeScreen(
     Scaffold(
         containerColor = Color.Transparent,
         floatingActionButton = {
-            FloatingActionButton(onClick = onAdd, containerColor = Lavender, contentColor = MaterialTheme.colorScheme.onPrimary) {
+            FloatingActionButton(onClick = onAdd, shape = RoundedCornerShape(20.dp), containerColor = FabColor, contentColor = Color.White) {
                 Icon(Icons.Filled.Add, contentDescription = "Add account")
             }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "AUTHENTICATOR", modifier = Modifier.weight(1f),
-                    fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp,
+                    "Authenticator", modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    fontSize = 24.sp, fontWeight = FontWeight.Bold,
                 )
                 IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
             }
             if (vm.accounts.isNotEmpty()) {
                 SearchBar(vm.query, onChange = { vm.query = it })
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
             }
             when {
                 vm.loadFailed -> Text(
@@ -342,7 +348,7 @@ private fun HomeScreen(
             }
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(vm.visible, key = { it.id }) { account ->
                     val hidden = vm.settings.hideCodes && now - (revealedAt[account.id] ?: 0L) > REVEAL_MS
@@ -370,15 +376,15 @@ private const val REVEAL_MS = 10_000L
 @Composable
 private fun SearchBar(query: String, onChange: (String) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().glass().padding(horizontal = 16.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(100.dp)).background(BarSurface).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Box(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 12.dp)) {
-            if (query.isEmpty()) Text("Search", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp)
+        Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White)
+        Box(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            if (query.isEmpty()) Text("Search accounts", color = Color(0xFF9EA3B8), fontSize = 16.sp)
             androidx.compose.foundation.text.BasicTextField(
                 value = query, onValueChange = onChange, singleLine = true,
-                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Lavender),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -407,25 +413,25 @@ private fun AccountCard(
     Row(
         Modifier.fillMaxWidth().glass()
             .combinedClickable(onClick = onTap, onLongClick = { menu = true })
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(start = 14.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(44.dp).background(Color(0x26CDB8FF), CircleShape),
+            Modifier.size(40.dp).background(Color(0x26CDB8FF), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(account.title.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "?", color = Lavender, fontWeight = FontWeight.Black, fontSize = 18.sp)
         }
-        Spacer(Modifier.size(14.dp))
+        Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(account.title, fontWeight = FontWeight.Black, fontSize = 15.sp, maxLines = 1)
+            Text(account.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
             if (account.subtitle.isNotEmpty()) {
                 Text(account.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1)
             }
-            Spacer(Modifier.size(4.dp))
+            Spacer(Modifier.size(2.dp))
             Text(
                 if (hidden) "•".repeat(code.length.coerceAtLeast(5)) else shown(code).ifEmpty { "—" },
-                fontSize = 30.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace,
+                fontSize = 26.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace,
                 color = if (urgent) MaterialTheme.colorScheme.error else Lavender,
             )
             if (showNext && timed && !hidden && remaining <= 10) {
@@ -472,6 +478,7 @@ private fun PasswordDialog(confirm: Boolean, onDismiss: () -> Unit, onPassword: 
         else -> null
     }
     AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         onDismissRequest = onDismiss,
         title = { Text(if (confirm) "Encrypt backup" else "Backup password") },
         text = {
