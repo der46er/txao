@@ -59,7 +59,7 @@ fun SettingsScreen(
             ActionRow("Export as plain text", "Unencrypted otpauth links. Handle with care", onExportPlain)
         }
         Section("About") {
-            Note("Txao Authenticator 1.2.0. Accounts never leave this phone unless you export them. No network access, no accounts, no analytics.")
+            Note("Txao Authenticator 1.2.1. Accounts never leave this phone unless you export them. No network access, no accounts, no analytics.")
         }
     }
 }
