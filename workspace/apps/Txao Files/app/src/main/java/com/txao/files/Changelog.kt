@@ -7,6 +7,11 @@ data class Release(val version: String, val notes: List<String>)
 /** Release notes, newest first. Add an entry here with every version bump. */
 object Changelog {
     val releases = listOf(
+        Release("1.3.3", listOf(
+            "Recents now also scans the real folders, so files that other apps never registered show up too",
+            "Folders Android keeps closed to apps (like Android/data) say so instead of looking empty",
+            "Settings shows whether All files access is allowed",
+        )),
         Release("1.3.2", listOf(
             "Every folder loads 20 items at a time and adds 20 more as you scroll, so big folders open instantly",
         )),

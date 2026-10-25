@@ -65,11 +65,17 @@ fun searchIn(dir: File, query: String, showHidden: Boolean, limit: Int = 300): L
 
 /** Newest files under [root], skipping hidden folders and Android/ (app-private data). */
 fun recentFiles(root: File, showHidden: Boolean, limit: Int = 100): List<Entry> {
-    val out = ArrayList<File>()
+    // Keeps only the newest [limit] files while walking, so memory stays small on huge storage.
+    val newest = java.util.PriorityQueue<Pair<Long, File>>(limit + 1, compareBy { it.first })
     root.walkTopDown()
         .onEnter { it == root || ((showHidden || !it.name.startsWith(".")) && !(it.parentFile == root && it.name == "Android")) }
-        .forEach { if (it.isFile && (showHidden || !it.name.startsWith("."))) out.add(it) }
-    return out.sortedByDescending { it.lastModified() }.take(limit).map(::entryOf)
+        .forEach {
+            if (it.isFile && (showHidden || !it.name.startsWith("."))) {
+                newest.add(it.lastModified() to it)
+                if (newest.size > limit) newest.poll()
+            }
+        }
+    return newest.sortedByDescending { it.first }.map { entryOf(it.second) }
 }
 
 fun volumes(context: Context): List<Volume> {
