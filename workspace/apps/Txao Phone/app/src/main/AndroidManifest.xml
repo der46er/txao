@@ -51,7 +51,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="tel" />
             </intent-filter>
+            <!-- Other Txao apps open a contact page with this action. -->
+            <intent-filter>
+                <action android:name="com.txao.phone.action.OPEN_CONTACT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
+
+        <!-- Read-only: lets Txao SMS show a contact's background image. Nothing else is exposed. -->
+        <provider
+            android:name=".ShareProvider"
+            android:authorities="com.txao.phone.share"
+            android:exported="true"
+            android:grantUriPermissions="false" />
 
         <activity
             android:name=".CallActivity"

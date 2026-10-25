@@ -35,7 +35,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -123,13 +123,13 @@ fun ChatsScreen(
                 if (selected.isEmpty()) {
                     // Search pill: menu on the left, search prompt, settings on the right.
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).height(54.dp).glass(30.dp, Color(0x1FFFFFFF)),
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).height(48.dp).glass(24.dp, Color(0x1FFFFFFF)),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconButton(onClick = { scope.launch { drawer.open() } }) { Icon(Icons.Default.Menu, "Menu") }
                         Text(
                             if (archivedFolder) "Search archived" else "Search conversations",
-                            Modifier.weight(1f).clickable(onClick = onSearch).padding(vertical = 14.dp),
+                            Modifier.weight(1f).clickable(onClick = onSearch).padding(vertical = 12.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         IconButton(onClick = { onNavigate(Screen.Settings) }) { Icon(Icons.Default.Settings, "Settings") }
@@ -159,7 +159,7 @@ fun ChatsScreen(
                 if (list.isEmpty()) {
                     EmptyState(if (archivedFolder) "No archived conversations" else "No conversations yet")
                 } else {
-                    LazyColumn(contentPadding = PaddingValues(bottom = 112.dp)) {
+                    LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
                         items(list, key = { it.threadId }) { c ->
                             val isSel = c.threadId in selected
                             val swipe = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
@@ -170,7 +170,7 @@ fun ChatsScreen(
                                 enableDismissFromStartToEnd = selected.isEmpty(),
                                 enableDismissFromEndToStart = selected.isEmpty(),
                                 backgroundContent = {
-                                    Box(
+                                    if (swipe.dismissDirection != SwipeToDismissBoxValue.Settled) Box(
                                         Modifier.fillMaxSize().background(Lavender.copy(alpha = 0.16f)).padding(horizontal = 28.dp),
                                         contentAlignment = if (swipe.dismissDirection == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd,
                                     ) {
@@ -191,13 +191,11 @@ fun ChatsScreen(
                 }
             }
             if (selected.isEmpty() && !archivedFolder) {
-                ExtendedFloatingActionButton(
+                FloatingActionButton(
                     onClick = onNew,
-                    modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),
                     containerColor = Lavender, contentColor = OnLavender,
-                    icon = { Icon(Icons.Default.AddComment, null) },
-                    text = { Text("Start chat", fontWeight = FontWeight.Medium) },
-                )
+                ) { Icon(Icons.Default.AddComment, "Start chat") }
             }
         }
     }
@@ -213,13 +211,13 @@ fun ChatsScreen(
 private fun ChatRow(c: Conversation, selected: Boolean, time: String, modifier: Modifier) {
     val unread = c.unread > 0
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp)
-            .glassIn(androidx.compose.foundation.shape.RoundedCornerShape(26.dp), if (selected) Lavender.copy(alpha = 0.22f) else Color.Transparent)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier.fillMaxWidth()
+            .background(if (selected) Lavender.copy(alpha = 0.18f) else Color.Transparent)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(c.title, 52, selected)
-        Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+        Avatar(c.title, 44, selected, c.address)
+        Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     c.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp,

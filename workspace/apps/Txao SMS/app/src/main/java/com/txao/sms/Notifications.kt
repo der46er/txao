@@ -26,7 +26,7 @@ object Notifications {
         createChannel(context)
         val unread = repo.messages(threadId).filter { !it.outgoing }.takeLast(5)
         val title = repo.displayName(address) ?: address
-        val text = if (store.notificationPreview) unread.lastOrNull()?.body.orEmpty() else "New message"
+        val text = if (store.notificationPreview) unread.lastOrNull()?.preview.orEmpty() else "New message"
 
         val open = PendingIntent.getActivity(
             context, threadId.toInt(),
@@ -55,7 +55,7 @@ object Notifications {
             .setContentText(text)
             .setStyle(
                 Notification.InboxStyle().also { s ->
-                    if (store.notificationPreview) unread.forEach { s.addLine(it.body) } else s.addLine(text)
+                    if (store.notificationPreview) unread.forEach { s.addLine(it.preview) } else s.addLine(text)
                     s.setBigContentTitle(title)
                 },
             )

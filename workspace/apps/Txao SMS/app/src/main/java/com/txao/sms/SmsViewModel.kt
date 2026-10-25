@@ -3,6 +3,7 @@ package com.txao.sms
 import android.app.Application
 import android.database.ContentObserver
 import android.net.Uri
+import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
 import android.provider.Telephony
@@ -83,6 +84,19 @@ class SmsViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         viewModelScope.launch(Dispatchers.IO) {
             Numbers.parseRecipients(address).forEach { Sender.send(app, it, body) }
+            refresh()
+        }
+    }
+
+    /** Sends a picture message (text optional) to each recipient. */
+    fun sendMms(address: String, body: String, uris: List<Uri>) {
+        val app = getApplication<Application>()
+        viewModelScope.launch(Dispatchers.IO) {
+            val media = uris.mapIndexedNotNull { i, u -> Mms.prepare(app, u, i) }
+            val sent = media.size == uris.size && Numbers.parseRecipients(address).map { Mms.send(app, it, body, media) }.all { it }
+            if (!sent) withContext(Dispatchers.Main) {
+                Toast.makeText(app, "Too large for a picture message (the limit is about 1 MB).", Toast.LENGTH_LONG).show()
+            }
             refresh()
         }
     }

@@ -30,20 +30,33 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 
 class MainActivity : ComponentActivity() {
     private var initialNumber by mutableStateOf("")
+    private var openNumber by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initialNumber = telNumber(intent)
-        setContent { TxaoTheme { App(initialNumber) } }
+        openNumber = contactNumber(intent)
+        setContent { TxaoTheme { App(initialNumber, openNumber) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         initialNumber = telNumber(intent)
+        openNumber = contactNumber(intent)
     }
 
     private fun telNumber(i: Intent?) =
-        i?.data?.takeIf { it.scheme == "tel" }?.schemeSpecificPart?.let(PhoneUtil::normalize).orEmpty()
+        if (i?.action == ACTION_OPEN_CONTACT) ""
+        else i?.data?.takeIf { it.scheme == "tel" }?.schemeSpecificPart?.let(PhoneUtil::normalize).orEmpty()
+
+    /** Other Txao apps (e.g. Txao SMS) open a person's contact page with this action and the number as an extra. */
+    private fun contactNumber(i: Intent?) =
+        if (i?.action == ACTION_OPEN_CONTACT) i.getStringExtra(EXTRA_NUMBER)?.let(PhoneUtil::normalize).orEmpty() else ""
+
+    companion object {
+        const val ACTION_OPEN_CONTACT = "com.txao.phone.action.OPEN_CONTACT"
+        const val EXTRA_NUMBER = "number"
+    }
 }
 
 private val PERMS = arrayOf(
@@ -61,11 +74,15 @@ private sealed interface Screen {
     data object Settings : Screen
 }
 
+private data class CodeDialog(
+    val title: String, val text: String, val loading: Boolean = false, val dialAsCall: Boolean = false, val showAbout: Boolean = false,
+)
+
 private val Tabs = listOf("Favorites" to Icons.Filled.Star, "Recents" to Icons.Filled.History, "Contacts" to Icons.Filled.Contacts, "Voicemail" to Icons.Filled.Voicemail)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun App(initialNumber: String) {
+private fun App(initialNumber: String, openNumber: String) {
     val ctx = LocalContext.current
     var granted by remember { mutableStateOf(hasAll(ctx)) }
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted = hasAll(ctx) }
@@ -109,7 +126,15 @@ private fun App(initialNumber: String) {
 
     var tab by remember { mutableIntStateOf(1) }
     var number by remember(initialNumber) { mutableStateOf(initialNumber) }
-    var screen by remember(initialNumber) { mutableStateOf<Screen?>(if (initialNumber.isNotEmpty()) Screen.Keypad else null) }
+    var screen by remember(initialNumber, openNumber) {
+        mutableStateOf<Screen?>(
+            when {
+                openNumber.isNotEmpty() -> Screen.Detail(openNumber, PhoneUtil.pretty(openNumber))
+                initialNumber.isNotEmpty() -> Screen.Keypad
+                else -> null
+            },
+        )
+    }
     val search = rememberTextFieldState()
     var menu by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
@@ -121,11 +146,28 @@ private fun App(initialNumber: String) {
 
     // Placing a call never falls back to the system dialer: ask for the permission instead, then dial.
     var pendingCall by remember { mutableStateOf<String?>(null) }
+    var retryCall by remember { mutableStateOf<String?>(null) }
+    var codeDialog by remember { mutableStateOf<CodeDialog?>(null) }
     val callPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         val n = pendingCall; pendingCall = null
-        if (ok && n != null) placeCall(ctx, n)
+        if (ok && n != null) retryCall = n
     }
-    val call: (String) -> Unit = { n -> if (!placeCall(ctx, n)) { pendingCall = n; callPermLauncher.launch(Manifest.permission.CALL_PHONE) } }
+    val call: (String) -> Unit = { n ->
+        val needsPermission = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission && n.isNotEmpty()) {
+            pendingCall = n; callPermLauncher.launch(Manifest.permission.CALL_PHONE)
+        } else when (val code = DialCode.parse(n)) {
+            DialCode.None -> placeCall(ctx, n)
+            DialCode.Imei -> codeDialog = CodeDialog("Device identifiers", DialCodeHandler.imei(ctx)?.let { "IMEI: $it" }
+                ?: "Android does not let apps read the IMEI. You can find it in Settings > About phone.", showAbout = true)
+            is DialCode.Secret -> { DialCodeHandler.sendSecretCode(ctx, code.code); codeDialog = CodeDialog("Hidden code", "Sent ${code.code} to apps that listen for it. If nothing opens, this phone does not use that code.") }
+            is DialCode.Ussd -> {
+                codeDialog = CodeDialog(code.code, "Sending…", loading = true)
+                DialCodeHandler.sendUssd(ctx, code.code) { text, failed -> codeDialog = CodeDialog(code.code, text, dialAsCall = failed) }
+            }
+        }
+    }
+    LaunchedEffect(retryCall) { retryCall?.let { retryCall = null; call(it) } }
     val open: (String, String) -> Unit = { n, t -> screen = Screen.Detail(n, t, contacts.firstOrNull { PhoneUtil.sameNumber(it.number, n) }?.id) }
     val photos = remember(contacts) { contacts.filter { it.photoUri != null }.associate { PhoneUtil.key(it.number) to it.photoUri!! } }
     val resolver: (String) -> String? = remember(photos) { { n -> photos[PhoneUtil.key(n)] } }
@@ -204,6 +246,20 @@ private fun App(initialNumber: String) {
         }
     }
 
+    }
+    codeDialog?.let { d ->
+        AlertDialog(
+            onDismissRequest = { codeDialog = null },
+            title = { Text(d.title) },
+            text = { Text(d.text) },
+            confirmButton = { if (!d.loading) TextButton({ codeDialog = null }) { Text("OK") } },
+            dismissButton = {
+                Row {
+                    if (d.showAbout) TextButton({ codeDialog = null; try { ctx.startActivity(Intent(android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS)) } catch (_: Exception) {} }) { Text("About phone") }
+                    if (d.dialAsCall) TextButton({ codeDialog = null; placeCall(ctx, d.title) }) { Text("Dial as call") }
+                }
+            },
+        )
     }
     if (showHelp && !isDefault) {
         val methods = DefaultDialer.requestIntents(ctx).size

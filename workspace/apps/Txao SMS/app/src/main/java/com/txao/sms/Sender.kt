@@ -20,6 +20,7 @@ object Sender {
 
     /** Sends a stored message again (after a failure). */
     fun resend(context: Context, msg: Msg) {
+        if (msg.mms) { Mms.resend(context, -msg.id); return }
         val repo = SmsRepository(context, Store(context))
         val uri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, msg.id.toString())
         repo.setType(uri, Telephony.Sms.MESSAGE_TYPE_OUTBOX)

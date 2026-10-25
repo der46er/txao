@@ -29,6 +29,15 @@ object WhatsNew {
 
     /** Release notes by versionCode. Add an entry per release; versions without one show nothing. */
     val notes: Map<Int, List<String>> = mapOf(
+        11 to listOf(
+            "Txao SMS can now open a contact's page here and show their background image in chats.",
+        ),
+        10 to listOf(
+            "Dial pad codes work: *#06#, USSD codes like *123# (answer shown in a dialog) and MMI codes.",
+            "Long-press the backspace key on the dial pad to clear the whole number.",
+            "TikTok added to usernames, and the platform logos are now the real ones.",
+            "Set a contact's background image straight from their page.",
+        ),
         9 to listOf(
             "Custom background image per contact, shown on their page and on the call screen.",
             "New Settings screen: sync new contacts with your Google account, edit quick replies.",

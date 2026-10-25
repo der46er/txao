@@ -10,12 +10,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,10 +42,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Dark bars with light icons, matching the dark canvas.
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         incoming = screenFor(intent)
         setContent {
             TxaoTheme {
+              CompositionLocalProvider(LocalRepo provides vm.repo) {
                 var isDefault by remember { mutableStateOf(vm.isDefault()) }
                 val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
                     isDefault = vm.isDefault()
@@ -64,6 +68,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     Root()
                 }
+              }
             }
         }
     }
@@ -100,7 +105,8 @@ class MainActivity : ComponentActivity() {
                 onNew = { screen = Screen.New() }, onSearch = { screen = Screen.Search }, onNavigate = { screen = it })
             is Screen.New -> NewChatScreen(vm, s.draft, modifier, onBack = home,
                 onPick = { screen = Screen.Chat(it, vm.repo.existingThreadId(it), s.draft) })
-            Screen.Search -> SearchScreen(vm, modifier, onBack = home, onOpen = { m -> screen = Screen.Chat(m.address, m.threadId) })
+            Screen.Search -> SearchScreen(vm, modifier, onBack = home, onOpen = { m -> screen = Screen.Chat(m.address, m.threadId) },
+                onOpenChat = { c -> screen = Screen.Chat(c.address, c.threadId) })
             Screen.Starred -> StarredScreen(vm, modifier, onBack = home, onOpen = { m -> screen = Screen.Chat(m.address, m.threadId) })
             Screen.Blocked -> BlockedScreen(vm, modifier, onBack = home)
             Screen.Settings -> SettingsScreen(vm, modifier, onBack = home)

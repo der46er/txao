@@ -1,6 +1,13 @@
 package com.txao.sms
 
 import android.content.Context
+import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -50,17 +57,41 @@ private val avatarHues = listOf(
     Color(0xFFE5B98A), Color(0xFF9CCB8F), Color(0xFFE08F9B), Color(0xFF8CC4E8),
 )
 
-/** Round contact picture: a tinted circle with the first letter, a person icon for numbers, a tick when selected. */
+/** The repository, so lists can look up contact photos and names without being handed it everywhere. */
+val LocalRepo = compositionLocalOf<SmsRepository?> { null }
+
+/** What the address book knows about [address] (looked up off the main thread), or null. */
 @Composable
-fun Avatar(label: String, size: Int = 48, selected: Boolean = false) {
+fun rememberContactInfo(address: String?): ContactInfo? {
+    val repo = LocalRepo.current
+    val state = produceState<ContactInfo?>(if (address == null) null else repo?.cachedContactInfo(address), address, repo) {
+        value = if (address == null || repo == null) null else withContext(Dispatchers.IO) { repo.contactInfo(address) }
+    }
+    return state.value
+}
+
+/** The contact's background image from Txao Phone, if they have one. */
+@Composable
+fun rememberContactBackground(address: String): androidx.compose.ui.graphics.ImageBitmap? =
+    rememberImage(if (address.isBlank() || Numbers.isAlpha(address)) null else PhoneLink.backgroundUri(address), 1024)
+
+/**
+ * Round contact picture: the contact's photo when [address] has one, otherwise a tinted circle with the first letter
+ * (a person icon for numbers), and a tick when selected.
+ */
+@Composable
+fun Avatar(label: String, size: Int = 48, selected: Boolean = false, address: String? = null) {
     val hue = avatarHues[(label.hashCode() and 0x7fffffff) % avatarHues.size]
     val letter = label.firstOrNull { it.isLetter() }?.uppercase()
+    val info = rememberContactInfo(address)
+    val photo = rememberImage(info?.photoUri?.let(Uri::parse), if (size > 80) 512 else 192)
     Box(
         Modifier.size(size.dp).clip(CircleShape).background(if (selected) Lavender else hue.copy(alpha = 0.26f)),
         contentAlignment = Alignment.Center,
     ) {
         when {
             selected -> Icon(Icons.Default.Check, "Selected", tint = OnLavender, modifier = Modifier.size((size / 2).dp))
+            photo != null -> Image(photo, label, Modifier.size(size.dp), contentScale = ContentScale.Crop)
             letter != null -> Text(letter, color = hue, fontWeight = FontWeight.Medium, fontSize = (size / 2.3).sp)
             else -> Icon(Icons.Default.Person, null, tint = hue, modifier = Modifier.size((size / 1.9).dp))
         }
