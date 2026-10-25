@@ -3,6 +3,8 @@
 
     <!-- Contacts: list and search contacts, show names in the call log and during calls. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Create, edit and delete contacts inside the app. -->
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <!-- Call log: show recent calls and clear them. -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
@@ -33,6 +35,10 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.CALL_BUTTON" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>

@@ -56,4 +56,17 @@ class PhoneUtilTest {
         val f = Data.frequent(listOf(out(1, "111111"), out(2, "222222"), out(3, "222222")), emptySet())
         assertEquals("222222", f.first().number)
     }
+
+    @Test fun countryFromInternationalPrefix() {
+        assertEquals("Austria", PhoneUtil.countryOf("+43 664 2423015"))
+        assertEquals("United States / Canada", PhoneUtil.countryOf("+1 555 0100"))
+        assertEquals("Portugal", PhoneUtil.countryOf("+351 21 000 0000"))
+        assertNull(PhoneUtil.countryOf("0664 2423015"))
+    }
+
+    @Test fun birthdayLabels() {
+        assertEquals("14 Mar 1990", PhoneUtil.birthdayLabel("1990-03-14"))
+        assertEquals("5 Dec", PhoneUtil.birthdayLabel("--12-05"))
+        assertEquals("sometime", PhoneUtil.birthdayLabel("sometime"))
+    }
 }

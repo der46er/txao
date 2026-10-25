@@ -1,6 +1,9 @@
 package com.txao.phone
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.content.Intent
 import android.net.Uri
 import android.provider.ContactsContract
@@ -35,14 +38,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-fun placeCall(ctx: Context, number: String) {
+/** Places the call through Telecom so our own in-call screen handles it; returns false when the call permission is missing. */
+fun placeCall(ctx: Context, number: String): Boolean {
     val n = PhoneUtil.normalize(number)
-    if (n.isEmpty()) return
-    val uri = Uri.fromParts("tel", n, null)
-    try {
-        ctx.getSystemService(TelecomManager::class.java).placeCall(uri, null)
+    if (n.isEmpty()) return true
+    if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) return false
+    return try {
+        ctx.getSystemService(TelecomManager::class.java).placeCall(Uri.fromParts("tel", n, null), null)
+        true
     } catch (_: SecurityException) {
-        ctx.startActivity(Intent(Intent.ACTION_DIAL, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        false
     }
 }
 
@@ -53,15 +58,6 @@ fun callVoicemail(ctx: Context) {
     }
 }
 
-private fun openMessages(ctx: Context, number: String) =
-    ctx.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", PhoneUtil.normalize(number), null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-
-private fun addContact(ctx: Context, number: String) =
-    ctx.startActivity(Intent(Intent.ACTION_INSERT_OR_EDIT).apply {
-        type = ContactsContract.Contacts.CONTENT_ITEM_TYPE
-        putExtra(ContactsContract.Intents.Insert.PHONE, number)
-    }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-
 private fun time(ctx: Context, t: Long) = DateFormat.getTimeFormat(ctx).format(t)
 
 @Composable
@@ -70,7 +66,7 @@ fun FavoritesScreen(contacts: List<Contact>, recents: List<CallEntry>, onCall: (
     val frequent = Data.frequent(recents, starred.map { PhoneUtil.normalize(it.number) }.toSet())
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 160.dp)) {
         if (starred.isEmpty() && frequent.isEmpty()) {
-            item { Empty("Star contacts in your contacts app, and the people you call most show up here.") }
+            item { Empty("Star contacts from their page, and the people you call most show up here.") }
         }
         if (starred.isNotEmpty()) {
             item { SectionHeader("Favorites") }
@@ -86,7 +82,7 @@ fun FavoritesScreen(contacts: List<Contact>, recents: List<CallEntry>, onCall: (
                             Modifier.padding(6.dp).glass(20.dp).clickable { onCall(c.number) }.padding(vertical = 14.dp).fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Avatar(c.name, 56.dp)
+                            Avatar(c.name, 56.dp, c.number, c.photoUri)
                             Text(c.name, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 8.dp, start = 6.dp, end = 6.dp))
                         }
                     }
@@ -96,7 +92,7 @@ fun FavoritesScreen(contacts: List<Contact>, recents: List<CallEntry>, onCall: (
         if (frequent.isNotEmpty()) {
             item { SectionHeader("Frequent") }
             items(frequent, key = { it.id }) { c ->
-                PersonRow(c.label, PhoneUtil.pretty(c.number), { onOpen(c.number, c.label) }) {
+                PersonRow(c.label, PhoneUtil.pretty(c.number), { onOpen(c.number, c.label) }, number = c.number) {
                     IconButton({ onCall(c.number) }) { Icon(Icons.Filled.Call, "Call", tint = Mint) }
                 }
             }
@@ -125,7 +121,7 @@ fun RecentsScreen(recents: List<CallEntry>, onCall: (String) -> Unit, onOpen: (S
                     val c = g.first
                     val count = if (g.count > 1) " (${g.count})" else ""
                     val arrow = when { c.missed -> "Missed"; c.outgoing -> "Outgoing"; else -> "Incoming" }
-                    PersonRow(c.label + count, "$arrow · " + time(ctx, c.date), { onOpen(c.number, c.label) }, if (c.missed) Danger else Color.Unspecified) {
+                    PersonRow(c.label + count, "$arrow · " + time(ctx, c.date), { onOpen(c.number, c.label) }, if (c.missed) Danger else Color.Unspecified, c.number) {
                         IconButton({ onCall(c.number) }) { Icon(Icons.Filled.Call, "Call back", tint = Mint) }
                     }
                 }
@@ -135,13 +131,13 @@ fun RecentsScreen(recents: List<CallEntry>, onCall: (String) -> Unit, onOpen: (S
 }
 
 @Composable
-fun ContactsScreen(contacts: List<Contact>, onOpen: (String, String) -> Unit) {
+fun ContactsScreen(contacts: List<Contact>, onOpen: (String, String) -> Unit, onNew: () -> Unit) {
     val ctx = LocalContext.current
     val sections = remember(contacts) { contacts.groupBy { PhoneUtil.section(it.name) }.toSortedMap(compareBy { if (it == '#') '[' else it }) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 160.dp)) {
         item {
             Row(
-                Modifier.clickable { ctx.startActivity(Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                Modifier.clickable(onClick = onNew)
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -153,7 +149,7 @@ fun ContactsScreen(contacts: List<Contact>, onOpen: (String, String) -> Unit) {
         sections.forEach { (letter, list) ->
             item(key = "s$letter") { SectionHeader(letter.toString()) }
             items(list, key = { "${it.id}/${it.number}" }) { c ->
-                PersonRow(c.name, PhoneUtil.pretty(c.number), { onOpen(c.number, c.name) })
+                PersonRow(c.name, PhoneUtil.pretty(c.number), { onOpen(c.number, c.name) }, number = c.number, photoUri = c.photoUri)
             }
         }
     }
@@ -183,15 +179,15 @@ fun SearchResults(query: String, contacts: List<Contact>, recents: List<CallEntr
             }
         }
         if (people.isNotEmpty()) item { SectionHeader("Contacts") }
-        items(people, key = { "c${it.id}/${it.number}" }) { c -> PersonRow(c.name, PhoneUtil.pretty(c.number), { onOpen(c.number, c.name) }) }
+        items(people, key = { "c${it.id}/${it.number}" }) { c -> PersonRow(c.name, PhoneUtil.pretty(c.number), { onOpen(c.number, c.name) }, number = c.number, photoUri = c.photoUri) }
         if (calls.isNotEmpty()) item { SectionHeader("Recent calls") }
-        items(calls, key = { "r${it.first.id}" }) { g -> PersonRow(g.first.label, PhoneUtil.pretty(g.first.number), { onOpen(g.first.number, g.first.label) }) }
+        items(calls, key = { "r${it.first.id}" }) { g -> PersonRow(g.first.label, PhoneUtil.pretty(g.first.number), { onOpen(g.first.number, g.first.label) }, number = g.first.number) }
         if (people.isEmpty() && calls.isEmpty() && digits.length < 3) item { Empty("No results.") }
     }
 }
 
 @Composable
-fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> Unit, onCall: () -> Unit, onClose: () -> Unit) {
+fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> Unit, onCall: () -> Unit, onClose: () -> Unit, onAddContact: (String) -> Unit) {
     val ctx = LocalContext.current
     val matches = remember(number, contacts) { if (number.isEmpty()) emptyList() else contacts.filter { PhoneUtil.matches(number, it.name, it.number) }.take(3) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -199,7 +195,7 @@ fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> 
         Column(Modifier.weight(1f).fillMaxWidth()) {
             matches.forEach { c ->
                 Row(Modifier.fillMaxWidth().clickable { onChange(PhoneUtil.normalize(c.number)) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Avatar(c.name, 36.dp)
+                    Avatar(c.name, 36.dp, c.number, c.photoUri)
                     Text("${c.name} · ${PhoneUtil.pretty(c.number)}", fontSize = 14.sp, color = Muted, maxLines = 1)
                 }
             }
@@ -207,7 +203,7 @@ fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> 
         Text(number.ifEmpty { " " }, fontSize = 36.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         Box(Modifier.height(36.dp)) {
             if (number.isNotEmpty() && Data.lookupName(ctx, number) == null) {
-                TextButton({ addContact(ctx, number) }) { Text("Add to contacts") }
+                TextButton({ onAddContact(number) }) { Text("Add to contacts") }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -232,59 +228,6 @@ fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> 
                 Icon(Icons.Filled.Call, "Call", tint = OnMint, modifier = Modifier.size(32.dp))
             }
             IconButton({ onChange(number.dropLast(1)) }, Modifier.size(48.dp)) { Icon(Icons.AutoMirrored.Filled.Backspace, "Delete") }
-        }
-    }
-}
-
-/** Call details: actions for a number plus its history. */
-@Composable
-fun DetailScreen(number: String, title: String, onBack: () -> Unit, onCall: (String) -> Unit, onChanged: () -> Unit) {
-    val ctx = LocalContext.current
-    var history by remember { mutableStateOf(Data.historyFor(ctx, number)) }
-    var blocked by remember { mutableStateOf(Data.isBlocked(ctx, number)) }
-    val known = remember(number) { Data.lookupName(ctx, number) != null }
-    var note by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth()) { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
-        LazyColumn(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            item {
-                Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Avatar(title, 96.dp)
-                    Text(title, fontSize = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 12.dp))
-                    if (title != PhoneUtil.pretty(number)) Text(PhoneUtil.pretty(number), color = Muted)
-                    if (blocked) Text("Blocked", color = Danger, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    ActionChip(Icons.Filled.Call, "Call", Mint) { onCall(number) }
-                    ActionChip(Icons.AutoMirrored.Filled.Message, "Message") { openMessages(ctx, number) }
-                    if (!known) ActionChip(Icons.Filled.PersonAdd, "Add") { addContact(ctx, number) }
-                    ActionChip(Icons.Filled.Block, if (blocked) "Unblock" else "Block", Danger) {
-                        val ok = if (blocked) Data.unblock(ctx, number) else Data.block(ctx, number)
-                        if (ok) blocked = !blocked else note = "Make Txao Phone your default phone app to block numbers."
-                    }
-                }
-            }
-            note?.let { item { Text(it, color = Danger, fontSize = 13.sp, modifier = Modifier.padding(16.dp), textAlign = TextAlign.Center) } }
-            if (history.isNotEmpty()) item { SectionHeader("History") }
-            items(history, key = { it.id }) { c ->
-                val icon = when { c.missed -> Icons.AutoMirrored.Filled.CallMissed; c.outgoing -> Icons.AutoMirrored.Filled.CallMade; else -> Icons.AutoMirrored.Filled.CallReceived }
-                val kind = when { c.missed -> "Missed"; c.outgoing -> "Outgoing"; else -> "Incoming" }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Icon(icon, null, tint = if (c.missed) Danger else Muted)
-                    Column(Modifier.weight(1f)) {
-                        Text(kind, color = if (c.missed) Danger else Color.Unspecified)
-                        Text(DateFormat.getMediumDateFormat(ctx).format(c.date) + " " + time(ctx, c.date), fontSize = 12.sp, color = Muted)
-                    }
-                    if (c.duration > 0) Text(PhoneUtil.duration(c.duration), color = Muted)
-                }
-            }
-            if (history.isNotEmpty()) item {
-                TextButton({ Data.deleteHistory(ctx, history.map { it.id }); history = emptyList(); onChanged() }, Modifier.padding(8.dp)) {
-                    Icon(Icons.Filled.Delete, null); Spacer(Modifier.width(8.dp)); Text("Delete call history")
-                }
-            }
         }
     }
 }

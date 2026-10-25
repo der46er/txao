@@ -7,7 +7,7 @@ import android.provider.BlockedNumberContract
 import android.provider.CallLog
 import android.provider.ContactsContract
 
-data class Contact(val id: Long, val name: String, val number: String, val starred: Boolean) {
+data class Contact(val id: Long, val name: String, val number: String, val starred: Boolean, val photoUri: String? = null) {
     val lookupUri: Uri get() = ContactsContract.Contacts.getLookupUri(id, null) ?: Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, id.toString())
 }
 
@@ -27,10 +27,10 @@ object Data {
     fun contacts(ctx: Context): List<Contact> {
         val out = ArrayList<Contact>()
         val p = ContactsContract.CommonDataKinds.Phone
-        val cols = arrayOf(p.CONTACT_ID, p.DISPLAY_NAME, p.NUMBER, p.STARRED)
+        val cols = arrayOf(p.CONTACT_ID, p.DISPLAY_NAME, p.NUMBER, p.STARRED, p.PHOTO_THUMBNAIL_URI)
         try {
             ctx.contentResolver.query(p.CONTENT_URI, cols, null, null, "${p.DISPLAY_NAME} COLLATE NOCASE")?.use { c ->
-                while (c.moveToNext()) out += Contact(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getInt(3) == 1)
+                while (c.moveToNext()) out += Contact(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getInt(3) == 1, c.getString(4))
             }
         } catch (_: SecurityException) {
         }
@@ -77,6 +77,19 @@ object Data {
         calls.filter { it.outgoing && !PhoneUtil.normalize(it.number).let(exclude::contains) }
             .groupBy { PhoneUtil.key(it.number) }.values
             .sortedByDescending { it.size }.take(max).map { it.first() }
+
+    /** Photo thumbnail for a number, or null. */
+    fun lookupPhoto(ctx: Context, number: String): String? {
+        if (number.isEmpty()) return null
+        return try {
+            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+            ctx.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup.PHOTO_URI), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0) else null
+            }
+        } catch (_: SecurityException) {
+            null
+        }
+    }
 
     fun lookupName(ctx: Context, number: String): String? {
         if (number.isEmpty()) return null

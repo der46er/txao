@@ -4,12 +4,15 @@ Dialer for Android in the TXAO glass look, with the layout and features people k
 
 - Favorites (starred contacts) and Frequent (most called)
 - Recents grouped by caller, with an All / Missed filter, day headings and a call-details page (history, call, message, block, add contact, delete history)
-- Contacts in alphabetical sections, create new contact
+- Contact photos everywhere (lists, favorites, call details, in-call and incoming screens), with a tinted initial as fallback
+- Contacts in alphabetical sections; create, edit and delete contacts inside the app (name, several phones and emails, address, company, birthday, notes, photo)
+- Contact page with photo header, star, edit, call / message / video / email / share / block, labelled numbers and emails, and the full call history
 - Search across contacts and recent calls, or call a typed number
 - Keypad with contact suggestions by number or name (T9)
 - Voicemail tab that dials your carrier's voicemail
 - Blocked numbers: callers on the block list are rejected before they ring (needs Txao Phone as the default phone app)
-- In-call screen: answer/decline, mute, speaker, hold, keypad tones, call timer
+- Real dialer: asks to become the default phone app on first launch, places calls through Telecom and shows its own call screen for outgoing and incoming calls (never the system dialer)
+- In-call screen: answer/decline, decline with a quick-reply message, mute, speaker, hold, add call, switch / merge calls, keypad tones, call timer, country of international numbers
 
 Written from scratch for TXAO; see `workspace/CONVENTIONS.md` (this app lives in `workspace/apps/`).
 
@@ -19,3 +22,6 @@ gradle :app:assembleRelease
 gradle :app:testDebugUnitTest
 ```
 Signed APKs go in `dist/` as `txao-phone-v<version>-release-signed.apk` (keystore in `signing/`, git-ignored).
+
+## Not yet done
+Settings screen (ringtone, vibration, editable quick replies), speed dial, in-call video UI, call recording, emergency contacts display, online spam lookup (the suite stays offline).
