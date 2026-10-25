@@ -52,6 +52,16 @@ class Prefs(private val context: Context) {
         get() = sp.getBoolean("sort_asc", true)
         set(v) = sp.edit().putBoolean("sort_asc", v).apply()
 
+    /** Length of the fade between folders and layouts, in milliseconds (0.1 s to 0.9 s). */
+    var fadeMs: Int
+        get() = sp.getInt("fade_ms", 200).coerceIn(100, 900)
+        set(v) = sp.edit().putInt("fade_ms", v.coerceIn(100, 900)).apply()
+
+    /** Version whose release notes the user has already seen. */
+    var lastSeenVersion: String
+        get() = sp.getString("last_seen_version", "") ?: ""
+        set(v) = sp.edit().putString("last_seen_version", v).apply()
+
     /** Optional user-picked wallpaper, stored privately inside the app. */
     val backgroundFile: File get() = File(context.filesDir, "background.img")
 }

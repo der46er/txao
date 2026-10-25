@@ -13,8 +13,8 @@ android {
         applicationId = "com.txao.authenticator"
         minSdk = 26
         targetSdk = 37
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 6
+        versionName = "1.2.3"
     }
 
     val keystoreProps = Properties().apply {

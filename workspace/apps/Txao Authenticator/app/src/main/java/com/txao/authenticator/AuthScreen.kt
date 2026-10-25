@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -314,7 +315,7 @@ private fun HomeScreen(
     Scaffold(
         containerColor = Color.Transparent,
         floatingActionButton = {
-            FloatingActionButton(onClick = onAdd, shape = RoundedCornerShape(20.dp), containerColor = FabColor, contentColor = Color.White) {
+            FloatingActionButton(onClick = onAdd, shape = RoundedCornerShape(20.dp), containerColor = FabColor, contentColor = Color(0xFF2E1B5C)) {
                 Icon(Icons.Filled.Add, contentDescription = "Add account")
             }
         },
@@ -376,7 +377,7 @@ private const val REVEAL_MS = 10_000L
 @Composable
 private fun SearchBar(query: String, onChange: (String) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(100.dp)).background(BarSurface).padding(horizontal = 14.dp),
+        Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(100.dp)).background(BarSurface).border(GlassBorder, RoundedCornerShape(100.dp)).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White)

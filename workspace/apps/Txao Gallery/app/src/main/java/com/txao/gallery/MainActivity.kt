@@ -55,6 +55,7 @@ sealed interface Source {
     data object Trash : Source
     data object Videos : Source
     data object Screenshots : Source
+    data class Custom(val name: String) : Source
 }
 
 class MainActivity : ComponentActivity() {
@@ -62,7 +63,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         externalUri = viewUri(intent)
         setContent { TxaoTheme { GlassBackground(Modifier.fillMaxSize()) { Root() } } }
     }
@@ -104,6 +108,9 @@ class MainActivity : ComponentActivity() {
         var hidden by remember { mutableStateOf(prefs.hiddenAlbums) }
         var sort by remember { mutableStateOf(prefs.sort) }
         var columns by remember { mutableStateOf(prefs.columns) }
+        var grouping by remember { mutableStateOf(prefs.grouping) }
+        var customAlbums by remember { mutableStateOf(prefs.customAlbums) }
+        var recents by remember { mutableStateOf(prefs.recentSearches) }
         var loaded by remember { mutableStateOf(false) }
         var tab by remember { mutableStateOf(Tab.Photos) }
         val stack = remember { mutableStateOf<List<Route>>(listOf<Route>(Route.Home)) }
@@ -137,6 +144,32 @@ class MainActivity : ComponentActivity() {
                     } else if (trash) {
                         deleteLegacy(items, after)
                     }
+                }
+
+                override fun setFavorite(items: List<MediaItem>, on: Boolean) {
+                    val ids = items.filter { it.id >= 0 }.map { it.id }
+                    favorites = if (on) favorites + ids else favorites - ids.toSet()
+                    prefs.favorites = favorites
+                }
+
+                override fun albumNames(): List<String> = customAlbums.keys.sortedBy { it.lowercase() }
+
+                override fun addToAlbum(name: String, items: List<MediaItem>) {
+                    val clean = name.trim()
+                    if (clean.isEmpty()) return
+                    customAlbums = customAlbums + (clean to ((customAlbums[clean] ?: emptySet()) + items.map { it.id }))
+                    prefs.customAlbums = customAlbums
+                }
+
+                override fun removeFromAlbum(name: String, items: List<MediaItem>) {
+                    val left = (customAlbums[name] ?: emptySet()) - items.map { it.id }.toSet()
+                    customAlbums = customAlbums + (name to left)
+                    prefs.customAlbums = customAlbums
+                }
+
+                override fun deleteAlbum(name: String) {
+                    customAlbums = customAlbums - name
+                    prefs.customAlbums = customAlbums
                 }
 
                 override fun deleteForever(items: List<MediaItem>, after: () -> Unit) {
@@ -182,6 +215,13 @@ class MainActivity : ComponentActivity() {
             prefs.favorites = favorites
         }
 
+        fun rememberSearch(q: String) {
+            val clean = q.trim()
+            if (clean.length < 2) return
+            recents = (listOf(clean) + recents.filterNot { it.equals(clean, ignoreCase = true) }).take(8)
+            prefs.recentSearches = recents
+        }
+
         val visible = remember(all, hidden) { all.filter { it.albumId !in hidden } }
 
         when (route) {
@@ -191,6 +231,9 @@ class MainActivity : ComponentActivity() {
                 albums = remember(all, hidden, sort) { groupAlbums(all, hidden, sort) },
                 hiddenAlbums = remember(all, hidden) { groupAlbums(all, emptySet(), sort).filter { it.id in hidden } },
                 trashedCount = trashed.size, loaded = loaded, favorites = favorites, sort = sort, columns = columns,
+                grouping = grouping, onGrouping = { grouping = it; prefs.grouping = it },
+                customAlbums = customAlbums, recents = recents, onSearched = ::rememberSearch,
+                onClearRecents = { recents = emptyList(); prefs.recentSearches = recents },
                 trashSupported = Build.VERSION.SDK_INT >= 30,
                 onSort = { sort = it; prefs.sort = it },
                 onColumns = { columns = it; prefs.columns = it },
@@ -209,9 +252,14 @@ class MainActivity : ComponentActivity() {
                     Source.Trash -> trashed
                     Source.Videos -> visible.filter { it.isVideo }
                     Source.Screenshots -> visible.filter { isScreenshot(it) }
+                    is Source.Custom -> {
+                        val ids = customAlbums[route.source.name] ?: emptySet()
+                        visible.filter { it.id in ids }
+                    }
                 }
                 GridScreen(
                     title = route.title, base = base, source = route.source, sort = sort, columns = columns,
+                    grouping = grouping, onGrouping = { grouping = it; prefs.grouping = it },
                     favorites = favorites, onBack = ::pop,
                     onOpen = { list, i -> push(Route.Viewer(list, i)) },
                     onColumns = { columns = it; prefs.columns = it },
@@ -237,6 +285,11 @@ class MainActivity : ComponentActivity() {
 interface GalleryActions {
     fun trash(items: List<MediaItem>, trash: Boolean, after: () -> Unit = {})
     fun deleteForever(items: List<MediaItem>, after: () -> Unit = {})
+    fun setFavorite(items: List<MediaItem>, on: Boolean)
+    fun albumNames(): List<String>
+    fun addToAlbum(name: String, items: List<MediaItem>)
+    fun removeFromAlbum(name: String, items: List<MediaItem>)
+    fun deleteAlbum(name: String)
 }
 
 @Composable

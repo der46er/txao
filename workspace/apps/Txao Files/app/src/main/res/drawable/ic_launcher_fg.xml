@@ -2,16 +2,23 @@
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- folder back with tab -->
-    <path android:pathData="M30,66V40a5,5 0 0 1 5,-5h13l6,7h19a5,5 0 0 1 5,5v19z"
-        android:fillColor="#38FFFFFF" android:strokeWidth="1.5" android:strokeColor="#99FFFFFF" />
-    <!-- folder front -->
-    <path android:pathData="M30,72l5.5,-24h43l-5.5,24z">
+    <!-- kept inside the adaptive-icon safe zone (about 62% of the canvas) -->
+    <group android:scaleX="0.7" android:scaleY="0.7" android:pivotX="54" android:pivotY="54">
+    <path android:pathData="M30,28H46L52,35H78A6,6 0 0 1 84,41V72A6,6 0 0 1 78,78H30A6,6 0 0 1 24,72V34A6,6 0 0 1 30,28z" android:strokeWidth="1" android:strokeColor="#80FFFFFF">
         <aapt:attr name="android:fillColor">
-            <gradient android:type="linear" android:startX="0" android:startY="48" android:endX="0" android:endY="72">
+            <gradient android:type="linear" android:startX="0" android:startY="28" android:endX="0" android:endY="78">
+                <item android:offset="0" android:color="#F2FFFFFF" />
+                <item android:offset="1" android:color="#66FFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M30,46H78A6,6 0 0 1 84,52V72A6,6 0 0 1 78,78H30A6,6 0 0 1 24,72V52A6,6 0 0 1 30,46z" android:strokeWidth="0.8" android:strokeColor="#99FFFFFF">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="46" android:endX="0" android:endY="78">
                 <item android:offset="0" android:color="#F1E8FF" />
                 <item android:offset="1" android:color="#CDB8FF" />
             </gradient>
         </aapt:attr>
     </path>
+    </group>
 </vector>

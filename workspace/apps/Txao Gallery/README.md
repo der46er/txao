@@ -2,10 +2,11 @@
 
 A glass-style photo and video gallery in the style of Google Photos, fully on device:
 
-- **Photos**: timeline grouped by day, draggable date scrubber, pinch to change the grid size, "On this day" memories.
-- **Search**: by file name, folder, month/year, or keywords such as videos, screenshots, favorites; category and date chips.
-- **Library**: favorites, videos, screenshots, trash (Android 11+), and your device folders (long-press to hide).
-- **Viewer**: swipe between items, pinch/double-tap zoom, video, slideshow, share, set as wallpaper, EXIF details.
+- **Photos**: timeline grouped by day or month, draggable date scrubber, pinch to change the grid size, tap the circle on a day header to select the whole day, "On this day" memories.
+- **Search**: by file name, folder, month/year, or keywords such as videos, screenshots, favorites; category and date chips and recent searches.
+- **Library**: favorites, videos, screenshots, trash with days left and "Empty trash" (Android 11+), your own albums (create, add and remove photos), and device folders (long-press to hide).
+- **Selection**: share, favourite, delete, add to album, select all.
+- **Viewer**: swipe between items, swipe down to close, swipe up for details, pinch/double-tap zoom, video, favourite, slideshow, share, set as wallpaper, EXIF details.
 - **Editor**: rotate, flip, crop ratios, brightness / contrast / saturation, filters; saves a copy to `Pictures/Txao`. No analytics, no ads, no accounts, no network permission.
 
 Written from scratch (clean-room) for TXAO; only platform APIs and Compose are used.

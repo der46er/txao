@@ -24,6 +24,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,11 +70,13 @@ fun Timeline(
     onLongClick: (MediaItem) -> Unit,
     onColumns: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    grouping: Grouping = Grouping.Day,
+    onSelectGroup: (List<Long>) -> Unit = {},
     state: LazyGridState = rememberLazyGridState(),
     header: (@Composable () -> Unit)? = null,
     bottomPadding: androidx.compose.ui.unit.Dp = 24.dp,
 ) {
-    val entries = remember(items, grouped) { buildEntries(items, grouped) }
+    val entries = remember(items, grouped, grouping) { buildEntries(items, grouped, grouping) }
     val px = (1080 / columns).coerceAtLeast(160)
     val selecting = selected.isNotEmpty()
     val scope = rememberCoroutineScope()
@@ -112,10 +121,26 @@ fun Timeline(
             entries.forEachIndexed { i, entry ->
                 when (entry) {
                     is Entry.Header -> item(span = { GridItemSpan(maxLineSpan) }, key = "h$i") {
-                        Text(
-                            entry.label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(start = 14.dp, top = 16.dp, bottom = 6.dp),
-                        )
+                        val allIn = entry.ids.isNotEmpty() && selected.containsAll(entry.ids)
+                        Row(
+                            Modifier.fillMaxWidth().combinedClickable(
+                                onClick = { if (selecting) onSelectGroup(entry.ids) },
+                                onLongClick = { onSelectGroup(entry.ids) },
+                            ).padding(start = 12.dp, end = 6.dp, top = 12.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                entry.label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text("${entry.ids.size}", color = Muted, fontSize = 11.sp)
+                            Icon(
+                                if (allIn) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                if (allIn) "Deselect group" else "Select group",
+                                tint = if (allIn) Accent else Muted,
+                                modifier = Modifier.padding(start = 8.dp).size(20.dp).clickable { onSelectGroup(entry.ids) },
+                            )
+                        }
                     }
                     is Entry.Cell -> item(key = "m${entry.item.id}") {
                         Thumb(

@@ -21,8 +21,22 @@ class Prefs(context: Context) {
         )
         set(v) = sp.edit().putInt("sort_field", v.field.ordinal).putBoolean("sort_asc", v.ascending).apply()
 
+    /** Albums the user made inside Txao Gallery (name to item ids). */
+    var customAlbums: Map<String, Set<Long>>
+        get() = decodeAlbums(sp.getString("custom_albums", null))
+        set(v) = sp.edit().putString("custom_albums", encodeAlbums(v)).apply()
+
+    var grouping: Grouping
+        get() = Grouping.entries.getOrElse(sp.getInt("grouping", 0)) { Grouping.Day }
+        set(v) = sp.edit().putInt("grouping", v.ordinal).apply()
+
+    /** Latest searches, newest first. */
+    var recentSearches: List<String>
+        get() = (sp.getString("recent_searches", "") ?: "").split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("recent_searches", v.take(8).joinToString("\n")).apply()
+
     var columns: Int
-        get() = sp.getInt("columns", 3).coerceIn(2, 6)
+        get() = sp.getInt("columns", 4).coerceIn(2, 6)
         set(v) = sp.edit().putInt("columns", v.coerceIn(2, 6)).apply()
 
     private fun readIds(key: String): Set<Long> =

@@ -9,6 +9,13 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -22,6 +29,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -51,7 +59,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val dateFmt by lazy { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
+private val dateFmt by lazy { SimpleDateFormat("d MMM yyyy", Locale.getDefault()) }
 
 private enum class HomeTab { Files, Recents, Locked }
 
@@ -125,6 +133,9 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     var sortAsc by remember { mutableStateOf(prefs.sortAscending) }
     var dialog by remember { mutableStateOf<Dialog?>(null) }
     var unlocked by remember { mutableStateOf(false) }
+    var fadeMs by remember { mutableIntStateOf(prefs.fadeMs) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showNews by remember { mutableStateOf(prefs.lastSeenVersion != appVersion(ctx)) }
     val vaultDir = remember { File(ctx.filesDir, "locked").apply { mkdirs() } }
     val auth = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         if (r.resultCode == Activity.RESULT_OK) unlocked = true
@@ -136,9 +147,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     val layout = remember(path, layoutTick) { prefs.layoutFor(path, roots) }
     val selecting = selected.isNotEmpty()
 
-    val entries by produceState(emptyList<Entry>(), path, refresh, showHidden, sortField, sortAsc) {
-        value = withContext(Dispatchers.IO) { listDir(dir, showHidden, sortField, sortAsc) }
-    }
+    var entries by remember { mutableStateOf(emptyList<Entry>()) }
     val results by produceState(emptyList<Entry>(), path, query, searching, showHidden, refresh) {
         value = if (searching && query.isNotBlank()) withContext(Dispatchers.IO) { searchIn(dir, query, showHidden) } else emptyList()
     }
@@ -150,7 +159,8 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     }
     fun closeSearch() { searching = false; query = "" }
 
-    BackHandler(enabled = selecting) { selected = emptySet() }
+    BackHandler(enabled = showSettings) { showSettings = false }
+    BackHandler(enabled = !showSettings && selecting) { selected = emptySet() }
     BackHandler(enabled = !selecting && searching) { closeSearch() }
     BackHandler(enabled = !selecting && !searching && tab != HomeTab.Files) { tab = HomeTab.Files }
     BackHandler(enabled = !selecting && !searching && tab == HomeTab.Files && path != vol.root.path) {
@@ -202,39 +212,47 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                                 hasBackground = hasBackground,
                                 onChooseBackground = chooseBackground,
                                 onClearBackground = clearBackground,
+                                onSettings = { showSettings = true },
                             )
                         }
                     }
                     Crumbs(vols, vol, path, onOpen = { path = it; closeSearch(); selected = emptySet() })
-                    val showing = if (searching && query.isNotBlank()) results else entries
-                    if (showing.isEmpty()) {
-                        Box(Modifier.fillMaxSize().padding(bottom = 80.dp), contentAlignment = Alignment.Center) {
-                            Text(
-                                if (searching && query.isNotBlank()) "No matches" else "This folder is empty",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else if (layout == FolderLayout.Grid && !(searching && query.isNotBlank())) {
-                        LazyVerticalGrid(
-                            GridCells.Adaptive(76.dp),
-                            Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-                        ) {
-                            items(showing, key = { it.file.path }) { e ->
-                                GridTile(e, e.file.path in selected,
-                                    onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
-                                    onLong = { selected = toggle(selected, e) })
+                    val searchActive = searching && query.isNotBlank()
+                    if (searchActive) {
+                        if (results.isEmpty()) {
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {
+                                Text("No matches", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            item { Spacer(Modifier.height(72.dp)) }
+                        } else {
+                            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 6.dp)) {
+                                items(results, key = { it.file.path }) { e ->
+                                    ListRow(e, e.file.path in selected, subtitleParent = true,
+                                        onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
+                                        onLong = { selected = toggle(selected, e) })
+                                }
+                                item { Spacer(Modifier.height(100.dp)) }
+                            }
                         }
                     } else {
-                        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 6.dp)) {
-                            items(showing, key = { it.file.path }) { e ->
-                                ListRow(e, e.file.path in selected, subtitleParent = searching && query.isNotBlank(),
-                                    onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
-                                    onLong = { selected = toggle(selected, e) })
-                            }
-                            item { Spacer(Modifier.height(72.dp)) }
+                        // Each (folder, layout) pair is its own screen with its own state, so moving
+                        // between a grid folder and a list folder never mixes their items.
+                        AnimatedContent(
+                            targetState = path to layout,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            // Pure crossfade. Size changes are snapped: animating them squeezed the incoming
+                            // folder into a narrow column while the previous one faded out.
+                            transitionSpec = {
+                                (fadeIn(tween(fadeMs)) togetherWith fadeOut(tween(fadeMs))) using SizeTransform(clip = false) { _, _ -> snap() }
+                            },
+                            label = "folder",
+                        ) { (p, l) ->
+                            FolderContent(
+                                dir = File(p), layout = l, refresh = refresh, showHidden = showHidden,
+                                sortField = sortField, sortAsc = sortAsc, selected = selected,
+                                onEntries = { if (p == path) entries = it },
+                                onClick = { e -> if (selecting) selected = toggle(selected, e) else open(e) },
+                                onLong = { e -> selected = toggle(selected, e) },
+                            )
                         }
                     }
                 }
@@ -269,7 +287,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
 
         if (tab == HomeTab.Files && !selecting) {
             var fabMenu by remember { mutableStateOf(false) }
-            Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 16.dp, bottom = 72.dp)) {
+            Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 16.dp, bottom = 92.dp)) {
                 Box(
                     Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF8E9BD0)).clickable { fabMenu = true },
                     contentAlignment = Alignment.Center,
@@ -289,6 +307,18 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                 }
             }
         }
+    }
+
+    if (showSettings) {
+        SettingsScreen(
+            prefs, fadeMs, { fadeMs = it; prefs.fadeMs = it },
+            showHidden, { showHidden = it; prefs.showHidden = it },
+            hasBackground, chooseBackground, clearBackground,
+            onClose = { showSettings = false },
+        )
+    }
+    if (showNews) {
+        WhatsNewDialog(Changelog.releases.take(3)) { showNews = false; prefs.lastSeenVersion = appVersion(ctx) }
     }
 
     when (val d = dialog) {
@@ -337,6 +367,42 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
             dismissButton = { TextButton({ dialog = Dialog.Delete(listOf(d.file)) }) { Text("Delete", color = Color(0xFFFFB4AB)) } },
         )
         null -> {}
+    }
+}
+
+@Composable
+private fun FolderContent(
+    dir: File, layout: FolderLayout, refresh: Int, showHidden: Boolean, sortField: SortField, sortAsc: Boolean,
+    selected: Set<String>, onEntries: (List<Entry>) -> Unit, onClick: (Entry) -> Unit, onLong: (Entry) -> Unit,
+) {
+    val loaded by produceState<List<Entry>?>(null, dir.path, refresh, showHidden, sortField, sortAsc) {
+        value = withContext(Dispatchers.IO) { listDir(dir, showHidden, sortField, sortAsc) }
+    }
+    val list = loaded
+    if (list == null) {
+        // Keep the full size while loading so the container never collapses mid-transition.
+        Box(Modifier.fillMaxSize())
+        return
+    }
+    LaunchedEffect(list) { onEntries(list) }
+    if (list.isEmpty()) {
+        Box(Modifier.fillMaxSize().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {
+            Text("This folder is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else if (layout == FolderLayout.Grid) {
+        LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
+            items(list, key = { it.file.path }) { e ->
+                GridTile(e, e.file.path in selected, Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
+            }
+            item { Spacer(Modifier.height(100.dp)) }
+        }
+    } else {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+            items(list, key = { it.file.path }) { e ->
+                ListRow(e, e.file.path in selected, subtitleParent = false, modifier = Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
+            }
+            item { Spacer(Modifier.height(100.dp)) }
+        }
     }
 }
 
@@ -397,7 +463,7 @@ private fun RowScope.BrowseBar(
     sortField: SortField, sortAsc: Boolean, onSort: (SortField, Boolean) -> Unit,
     showHidden: Boolean, onShowHidden: (Boolean) -> Unit,
     hasCustomLayout: Boolean, onResetLayout: () -> Unit,
-    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit,
+    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit, onSettings: () -> Unit,
 ) {
     var sortMenu by remember { mutableStateOf(false) }
     var moreMenu by remember { mutableStateOf(false) }
@@ -450,6 +516,7 @@ private fun RowScope.BrowseBar(
             if (hasCustomLayout) DropdownMenuItem({ Text("Use default layout here") }, { onResetLayout(); moreMenu = false })
             DropdownMenuItem({ Text("Choose background image") }, { onChooseBackground(); moreMenu = false })
             if (hasBackground) DropdownMenuItem({ Text("Remove background image") }, { onClearBackground(); moreMenu = false })
+            DropdownMenuItem({ Text("Settings") }, { onSettings(); moreMenu = false })
         }
     }
 }
@@ -513,23 +580,27 @@ private fun Modifier.selectedBg(selected: Boolean, radius: Int = 16): Modifier =
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun GridTile(e: Entry, selected: Boolean, onClick: () -> Unit, onLong: () -> Unit) {
-    Column(
-        Modifier.padding(2.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLong).padding(vertical = 8.dp, horizontal = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        FileGlyph(e.file, e.isDir, 46.dp)
-        Spacer(Modifier.height(4.dp))
-        Text(e.name, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+private fun GridTile(e: Entry, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit, onLong: () -> Unit) {
+    // The glyph fills most of the column, like Fossify's big flat folders.
+    BoxWithConstraints(modifier.padding(1.dp)) {
+        val glyph = maxWidth * 0.84f
+        Column(
+            Modifier.fillMaxWidth().selectedBg(selected).clip(RoundedCornerShape(14.dp))
+                .combinedClickable(onClick = onClick, onLongClick = onLong).padding(vertical = 6.dp, horizontal = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            FileGlyph(e.file, e.isDir, glyph)
+            Spacer(Modifier.height(2.dp))
+            Text(e.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ListRow(e: Entry, selected: Boolean, subtitleParent: Boolean, onClick: () -> Unit, onLong: () -> Unit) {
+private fun ListRow(e: Entry, selected: Boolean, subtitleParent: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit, onLong: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 8.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
+        modifier.fillMaxWidth().padding(horizontal = 8.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLong).padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -617,5 +688,72 @@ private fun NameDialog(title: String, initial: String, confirm: String, onDismis
         text = { OutlinedTextField(text, { text = it }, singleLine = true) },
         confirmButton = { TextButton({ onOk(text.trim()) }, enabled = valid) { Text(confirm) } },
         dismissButton = { TextButton(onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun SettingsScreen(
+    prefs: Prefs, fadeMs: Int, onFade: (Int) -> Unit, showHidden: Boolean, onHidden: (Boolean) -> Unit,
+    hasBackground: Boolean, onChooseBackground: () -> Unit, onClearBackground: () -> Unit, onClose: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    var news by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(GlassBg).systemBarsPadding().verticalScroll(rememberScrollState())) {
+        Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClose) { Icon(Icons.Filled.ArrowBack, "Back", tint = Color.White) }
+            Text("Settings", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        }
+        SettingsCard("Appearance") {
+            Text("Fade between screens: ${"%.1f".format(Locale.US, fadeMs / 1000f)} s", fontSize = 15.sp)
+            Slider(
+                value = fadeMs / 1000f, onValueChange = { onFade((Math.round(it * 10) * 100).coerceIn(100, 900)) },
+                valueRange = 0.1f..0.9f, steps = 7,
+                colors = SliderDefaults.colors(thumbColor = Accent, activeTrackColor = Accent),
+            )
+            Spacer(Modifier.height(4.dp))
+            Row {
+                TextButton(onChooseBackground) { Text("Choose background image") }
+                if (hasBackground) TextButton(onClearBackground) { Text("Remove") }
+            }
+        }
+        SettingsCard("Files") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Show hidden files", Modifier.weight(1f), fontSize = 15.sp)
+                Switch(showHidden, onHidden)
+            }
+        }
+        SettingsCard("About") {
+            Text("Txao Files ${appVersion(ctx)}", fontSize = 15.sp)
+            Text("No analytics, no ads, no accounts, no network access.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton({ news = true }) { Text("What's new") }
+        }
+    }
+    if (news) WhatsNewDialog(Changelog.releases) { news = false }
+}
+
+@Composable
+private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 10.dp).clip(RoundedCornerShape(20.dp)).background(BarSurface).padding(16.dp)) {
+        Text(title, fontSize = 13.sp, color = Accent, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(8.dp))
+        content()
+    }
+}
+
+@Composable
+private fun WhatsNewDialog(releases: List<Release>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = { Text("What's new") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                for (r in releases) {
+                    Text("Version ${r.version}", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+                    for (n in r.notes) Text("• $n", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        confirmButton = { TextButton(onDismiss) { Text("OK") } },
     )
 }

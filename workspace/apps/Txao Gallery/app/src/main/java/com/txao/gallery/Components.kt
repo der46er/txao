@@ -2,7 +2,18 @@ package com.txao.gallery
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,13 +58,13 @@ fun Thumb(
             Image(it, item.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
         if (item.isVideo) {
-            Box(
+            Row(
                 Modifier.align(Alignment.BottomStart).padding(4.dp)
-                    .clip(RoundedCornerShape(50)).background(Color(0x99000000)).padding(horizontal = 6.dp, vertical = 2.dp),
-                contentAlignment = Alignment.Center,
+                    .clip(RoundedCornerShape(50)).background(Color(0x99000000)).padding(start = 3.dp, end = 7.dp, top = 2.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(12.dp))
-                Text(formatDuration(item.durationMs), color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp))
+                Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                Text(formatDuration(item.durationMs), color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(start = 2.dp))
             }
         }
         if (favorite) {
@@ -63,7 +74,7 @@ fun Thumb(
             )
         }
         if (selected == true) {
-            Box(Modifier.fillMaxSize().background(Color(0x66FFFFFF)))
+            Box(Modifier.fillMaxSize().background(Color(0x55CDB8FF)))
         }
         if (selected != null) {
             Box(
@@ -75,4 +86,32 @@ fun Thumb(
             }
         }
     }
+}
+
+/** Pick one of the user's albums, or type a name to make a new one. */
+@Composable
+fun AlbumPickerDialog(names: List<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    var fresh by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to album") },
+        text = {
+            Column {
+                names.forEach { n ->
+                    Text(
+                        n, Modifier.fillMaxWidth().clickable { onPick(n) }.padding(vertical = 10.dp),
+                        fontSize = 15.sp,
+                    )
+                }
+                OutlinedTextField(
+                    value = fresh, onValueChange = { fresh = it }, singleLine = true,
+                    label = { Text("New album") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (fresh.isNotBlank()) onPick(fresh.trim()) }, enabled = fresh.isNotBlank()) { Text("Create") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

@@ -18,11 +18,16 @@ data class MediaItem(
     val durationMs: Long,
     val albumId: Long,
     val albumName: String,
+    /** Trash only: when the system deletes the item for good (0 = unknown). */
+    val expiresMs: Long = 0L,
 )
 
 data class Album(val id: Long, val name: String, val items: List<MediaItem>) {
     val cover: MediaItem get() = items.first()
 }
+
+/** How the timeline groups items under headers. */
+enum class Grouping(val label: String) { Day("Days"), Month("Months") }
 
 enum class SortField { Date, Name, Size }
 
@@ -98,20 +103,20 @@ fun onThisDay(items: List<MediaItem>, nowMs: Long = System.currentTimeMillis()):
 /** Rows of the timeline: day headers interleaved with media cells. */
 sealed interface Entry {
     val month: String
-    data class Header(val label: String, override val month: String) : Entry
+    data class Header(val label: String, override val month: String, val ids: List<Long> = emptyList()) : Entry
     data class Cell(val item: MediaItem, val index: Int, override val month: String) : Entry
 }
 
-fun buildEntries(items: List<MediaItem>, grouped: Boolean): List<Entry> {
+fun buildEntries(items: List<MediaItem>, grouped: Boolean, grouping: Grouping = Grouping.Day): List<Entry> {
     val out = ArrayList<Entry>(items.size + 32)
     if (!grouped) {
         items.forEachIndexed { i, it -> out.add(Entry.Cell(it, i, monthLabel(it.dateMs))) }
         return out
     }
     var next = 0
-    for ((label, list) in groupByDay(items)) {
+    for ((label, list) in groupItems(items, grouping)) {
         val month = monthLabel(list.first().dateMs)
-        out.add(Entry.Header(label, month))
+        out.add(Entry.Header(label, month, list.map { it.id }))
         for (it in list) out.add(Entry.Cell(it, next++, month))
     }
     return out
@@ -121,9 +126,9 @@ fun buildEntries(items: List<MediaItem>, grouped: Boolean): List<Entry> {
 fun scrubIndex(fraction: Float, size: Int): Int =
     if (size <= 0) 0 else (fraction.coerceIn(0f, 1f) * (size - 1)).toInt()
 
-/** Groups consecutive items sharing the same calendar day, keeping the given order. */
-fun groupByDay(items: List<MediaItem>, locale: Locale = Locale.getDefault()): List<Pair<String, List<MediaItem>>> {
-    val fmt = SimpleDateFormat("EEEE, d MMMM yyyy", locale)
+/** Groups consecutive items sharing the same calendar day or month, keeping the given order. */
+fun groupItems(items: List<MediaItem>, grouping: Grouping, locale: Locale = Locale.getDefault()): List<Pair<String, List<MediaItem>>> {
+    val fmt = SimpleDateFormat(if (grouping == Grouping.Day) "EEEE, d MMMM yyyy" else "MMMM yyyy", locale)
     val out = ArrayList<Pair<String, MutableList<MediaItem>>>()
     for (item in items) {
         val label = fmt.format(Date(item.dateMs))
@@ -131,6 +136,33 @@ fun groupByDay(items: List<MediaItem>, locale: Locale = Locale.getDefault()): Li
         else out.last().second.add(item)
     }
     return out
+}
+
+fun groupByDay(items: List<MediaItem>, locale: Locale = Locale.getDefault()): List<Pair<String, List<MediaItem>>> =
+    groupItems(items, Grouping.Day, locale)
+
+/** Whole days until the system empties the trash for [item]; null when unknown. */
+fun trashDaysLeft(item: MediaItem, nowMs: Long = System.currentTimeMillis()): Int? =
+    if (item.expiresMs <= 0) null else ((item.expiresMs - nowMs + 86_399_999L) / 86_400_000L).toInt().coerceAtLeast(0)
+
+/** Album names mapped to the ids of their items, as kept in [Prefs]. */
+fun encodeAlbums(albums: Map<String, Set<Long>>): String {
+    val root = org.json.JSONObject()
+    for ((name, ids) in albums) root.put(name, org.json.JSONArray(ids.toList()))
+    return root.toString()
+}
+
+fun decodeAlbums(json: String?): Map<String, Set<Long>> {
+    if (json.isNullOrBlank()) return emptyMap()
+    return runCatching {
+        val root = org.json.JSONObject(json)
+        val out = LinkedHashMap<String, Set<Long>>()
+        for (name in root.keys()) {
+            val arr = root.getJSONArray(name)
+            out[name] = (0 until arr.length()).map { arr.getLong(it) }.toSet()
+        }
+        out
+    }.getOrDefault(emptyMap())
 }
 
 fun formatDuration(ms: Long): String {
