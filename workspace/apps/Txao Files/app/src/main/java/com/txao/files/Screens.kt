@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -137,7 +138,7 @@ private fun Browser(prefs: Prefs, folderColors: FolderColors) {
     val layout = remember(path, layoutTick, roots) { prefs.layoutFor(path, roots) }
     val selecting = selected.isNotEmpty()
 
-    var entries by remember { mutableStateOf(emptyList<Entry>()) }
+    var entryPaths by remember { mutableStateOf(emptyList<String>()) }
     val results by produceState(emptyList<Entry>(), path, query, searching, showHidden, refresh) {
         value = if (searching && query.isNotBlank()) withContext(Dispatchers.IO) { searchIn(dir, query, showHidden) } else emptyList()
     }
@@ -192,8 +193,16 @@ private fun Browser(prefs: Prefs, folderColors: FolderColors) {
                             SelectionBar(
                                 count = selected.size,
                                 onClose = { selected = emptySet() },
-                                onSelectAll = { selected = (if (searching) results else entries).map { it.file.path }.toSet() },
-                                onShare = { shareFiles(ctx, selected.map(::File)); selected = emptySet() },
+                                onSelectAll = { selected = (if (searching) results.map { it.file.path } else entryPaths).toSet() },
+                                onShare = {
+                                    val files = selected.map(::File)
+                                    selected = emptySet()
+                                    if (files.any { it.isDirectory }) toast("Zipping folders to share…")
+                                    scope.launch {
+                                        val ready = withContext(Dispatchers.IO) { prepareShare(ctx, files) }
+                                        if (ready.isEmpty()) toast("Nothing to share") else shareFiles(ctx, ready)
+                                    }
+                                },
                                 onCopy = { clip = Clip(selected.map(::File), false); selected = emptySet(); toast("Copied. Use + to paste.") },
                                 onCut = { clip = Clip(selected.map(::File), true); selected = emptySet(); toast("Cut. Use + to paste.") },
                                 onRename = { dialog = Dialog.Rename(File(selected.first())) },
@@ -270,7 +279,7 @@ private fun Browser(prefs: Prefs, folderColors: FolderColors) {
                             FolderContent(
                                 dir = File(p), layout = l, refresh = refresh, showHidden = showHidden,
                                 sortField = sortField, sortAsc = sortAsc, selected = selected,
-                                onEntries = { if (p == path) entries = it },
+                                onPaths = { if (p == path) entryPaths = it },
                                 onClick = { e -> if (selecting) selected = toggle(selected, e) else open(e) },
                                 onLong = { e -> selected = toggle(selected, e) },
                             )
@@ -421,35 +430,56 @@ private fun Browser(prefs: Prefs, folderColors: FolderColors) {
     }
 }
 
+/** Folders show 20 items at first and add 20 more each time you scroll near the end. */
+private const val PAGE = 20
+
 @Composable
 private fun FolderContent(
     dir: File, layout: FolderLayout, refresh: Int, showHidden: Boolean, sortField: SortField, sortAsc: Boolean,
-    selected: Set<String>, onEntries: (List<Entry>) -> Unit, onClick: (Entry) -> Unit, onLong: (Entry) -> Unit,
+    selected: Set<String>, onPaths: (List<String>) -> Unit, onClick: (Entry) -> Unit, onLong: (Entry) -> Unit,
 ) {
-    val loaded by produceState<List<Entry>?>(null, dir.path, refresh, showHidden, sortField, sortAsc) {
-        value = withContext(Dispatchers.IO) { listDir(dir, showHidden, sortField, sortAsc) }
+    val sorted by produceState<List<File>?>(null, dir.path, refresh, showHidden, sortField, sortAsc) {
+        value = withContext(Dispatchers.IO) { listSorted(dir, showHidden, sortField, sortAsc) }
     }
-    val list = loaded
-    if (list == null) {
+    val all = sorted
+    if (all == null) {
         // Keep the full size while loading so the container never collapses mid-transition.
         Box(Modifier.fillMaxSize())
         return
     }
-    LaunchedEffect(list) { onEntries(list) }
-    if (list.isEmpty()) {
+    LaunchedEffect(all) { onPaths(all.map { it.path }) }
+    if (all.isEmpty()) {
         Box(Modifier.fillMaxSize().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {
             Text("This folder is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-    } else if (layout == FolderLayout.Grid) {
-        LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
-            items(list, key = { it.file.path }) { e ->
+        return
+    }
+    var shown by remember(all) { mutableIntStateOf(PAGE) }
+    val loaded = remember(all) { mutableStateListOf<Entry>() }
+    LaunchedEffect(all, shown) {
+        val to = minOf(shown, all.size)
+        if (loaded.size < to) {
+            val more = withContext(Dispatchers.IO) { all.subList(loaded.size, to).map(::entryOf) }
+            loaded.addAll(more)
+        }
+    }
+    val canMore = shown < all.size && loaded.size >= shown
+    if (layout == FolderLayout.Grid) {
+        val state = rememberLazyGridState()
+        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 } } }
+        LaunchedEffect(nearEnd, canMore, loaded.size) { if (nearEnd && canMore) shown += PAGE }
+        LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
+            items(loaded, key = { it.file.path }) { e ->
                 GridTile(e, e.file.path in selected, Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
             }
             item { Spacer(Modifier.height(100.dp)) }
         }
     } else {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-            items(list, key = { it.file.path }) { e ->
+        val state = rememberLazyListState()
+        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 } } }
+        LaunchedEffect(nearEnd, canMore, loaded.size) { if (nearEnd && canMore) shown += PAGE }
+        LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(vertical = 6.dp)) {
+            items(loaded, key = { it.file.path }) { e ->
                 ListRow(e, e.file.path in selected, subtitleParent = false, modifier = Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
             }
             item { Spacer(Modifier.height(100.dp)) }
