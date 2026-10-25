@@ -92,6 +92,8 @@ class MainActivity : ComponentActivity() {
                     val bars = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
                     else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                     enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                    // Without this Android paints a grey scrim behind 3-button navigation.
+                    if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
                 }
                 GlassBackground {
                     val alpha = remember { Animatable(0f) }
