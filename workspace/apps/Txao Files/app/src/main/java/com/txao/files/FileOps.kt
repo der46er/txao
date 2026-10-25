@@ -222,3 +222,24 @@ private fun zipFolder(folder: File, target: File): File {
     }
     return target
 }
+
+private class SortKey(val file: File, val isDir: Boolean, val modified: Long, val size: Long)
+
+/**
+ * The folder's contents in display order, as plain files. Nothing expensive (like counting a
+ * subfolder's items) is done here; build [Entry]s for the part that is on screen with [entryOf].
+ */
+fun listSorted(dir: File, showHidden: Boolean, field: SortField, ascending: Boolean): List<File> {
+    val files = dir.listFiles()?.filter { showHidden || !it.name.startsWith(".") } ?: return emptyList()
+    val keys = files.map {
+        val d = it.isDirectory
+        SortKey(it, d, if (field == SortField.Date) it.lastModified() else 0L, if (field == SortField.Size && !d) it.length() else 0L)
+    }
+    val cmp: Comparator<SortKey> = when (field) {
+        SortField.Name -> compareBy { it.file.name.lowercase(Locale.ROOT) }
+        SortField.Date -> compareBy { it.modified }
+        SortField.Size -> compareBy { it.size }
+    }
+    val ordered = if (ascending) cmp else cmp.reversed()
+    return keys.sortedWith(compareByDescending<SortKey> { it.isDir }.then(ordered)).map { it.file }
+}
