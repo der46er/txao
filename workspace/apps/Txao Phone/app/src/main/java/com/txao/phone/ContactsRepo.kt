@@ -7,6 +7,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds as K
+import android.provider.ContactsContract.Data as D
 
 /** A labelled value such as a phone number or email address. `type` is the ContactsContract type constant. */
 data class Labeled(val type: Int, val customLabel: String?, val value: String, val primary: Boolean = false) {
@@ -69,7 +70,6 @@ object ContactsRepo {
             }
             if (!found) return null
             val phones = ArrayList<Labeled>(); val emails = ArrayList<Labeled>()
-            val D = ContactsContract.Data
             cr.query(
                 D.CONTENT_URI,
                 arrayOf(D.RAW_CONTACT_ID, D.MIMETYPE, D.DATA1, D.DATA2, D.DATA3, D.IS_PRIMARY, D.DATA4, D.DATA5),
@@ -113,7 +113,6 @@ object ContactsRepo {
     /** Creates a new device contact (or rewrites the managed fields of an existing one). Returns the contact id. */
     fun save(ctx: Context, edit: ContactEdit): Long? {
         val d = edit.details
-        val D = ContactsContract.Data
         val ops = ArrayList<ContentProviderOperation>()
         val creating = d.rawId == 0L
         if (creating) {
