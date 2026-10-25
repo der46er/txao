@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -38,7 +40,7 @@ fun TxaoTheme(content: @Composable () -> Unit) {
             surfaceContainerHighest = Color(0xFF262B3A), outlineVariant = Color(0xFF2E3342),
             error = Color(0xFFFF8A9B),
         ),
-        content = content,
+        content = { CompositionLocalProvider(LocalContentColor provides Color(0xFFEDEBF5), content = content) },
     )
 }
 

@@ -102,7 +102,10 @@ private fun GridPage(
         Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp)) {
             Spacer(Modifier.width(GutterWidth))
             dayList.forEach { d ->
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { onDayHeader(d) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { onDayHeader(d) }.padding(start = if (n == 1) 12.dp else 0.dp),
+                    horizontalAlignment = if (n == 1) Alignment.Start else Alignment.CenterHorizontally,
+                ) {
                     Text(
                         d.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
                         fontSize = 11.sp, color = if (d == today) MaterialTheme.colorScheme.primary else dimText(),
