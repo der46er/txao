@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
 
 class MainActivity : ComponentActivity() {
     private val vm: AuthViewModel by viewModels()
@@ -19,10 +20,12 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handle(intent)
         setContent {
             TxaoTheme {
-                if (vm.locked && vm.settings.appLock) {
-                    LockScreen(onUnlocked = { vm.locked = false }, onPrompt = { vm.skipNextLock = true })
-                } else {
-                    AuthScreen(vm)
+                TxaoBackground(Modifier.fillMaxSize()) {
+                    if (vm.locked && vm.settings.appLock) {
+                        LockScreen(onUnlocked = { vm.locked = false }, onPrompt = { vm.skipNextLock = true })
+                    } else {
+                        AuthScreen(vm)
+                    }
                 }
             }
         }

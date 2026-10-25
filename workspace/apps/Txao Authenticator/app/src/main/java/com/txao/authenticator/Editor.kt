@@ -1,5 +1,6 @@
 package com.txao.authenticator
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -64,6 +65,7 @@ fun AccountEditor(initial: Account?, onDismiss: () -> Unit, onSave: (Account) ->
     }
 
     AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         onDismissRequest = onDismiss,
         title = { Text(if (initial == null) "Add account" else "Edit account") },
         text = {
