@@ -13,6 +13,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
@@ -43,7 +44,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -108,6 +109,10 @@ fun MusicApp(
     fun push(r: Route) { stack.add(r) }
     fun pop() { if (stack.size > 1) stack.removeAt(stack.size - 1) }
     BackHandler(stack.size > 1) { pop() }
+    val openArtist: (String) -> Unit = { name ->
+        val list = vm.tracks.filter { it.artist == name }
+        if (list.isNotEmpty()) push(Route.Detail(name, "${list.size} songs", list, true))
+    }
 
     var tab by rememberSaveable { mutableStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -128,10 +133,10 @@ fun MusicApp(
             when (r) {
                 Route.Home -> HomeScreen(
                     vm, tab, { tab = it }, query, { query = it }, songsState, albumsState, artistsState,
-                    onRequestPermission, ::push, { push(Route.Settings) },
+                    onRequestPermission, ::push, { push(Route.Settings) }, openArtist,
                 )
-                is Route.Detail -> DetailScreen(vm, r, ::pop) { push(it) }
-                Route.Player -> PlayerScreen(vm, ::pop)
+                is Route.Detail -> DetailScreen(vm, r, ::pop, openArtist) { push(it) }
+                Route.Player -> PlayerScreen(vm, ::pop, openArtist)
                 Route.Settings -> SettingsScreen(prefs, ::pop)
                 is Route.Edit -> EditScreen(vm, r.tracks, ::pop, onRequestWrite, allFilesAccess, onGrantAllFiles)
             }
@@ -146,7 +151,7 @@ fun MusicApp(
 }
 
 // Space the list leaves at the bottom so the mini player never covers the last rows.
-private val MiniClearance = 108.dp
+private fun miniClearance(vm: PlayerViewModel) = if (vm.current != null) 96.dp else 16.dp
 
 private fun Modifier.screen() = this.fillMaxSize().systemBarsPadding()
 
@@ -166,7 +171,7 @@ private fun TopBar(title: String, onBack: (() -> Unit)? = null, actions: @Compos
 private fun HomeScreen(
     vm: PlayerViewModel, tab: Int, setTab: (Int) -> Unit, query: String, setQuery: (String) -> Unit,
     songsState: LazyListState, albumsState: LazyGridState, artistsState: LazyListState,
-    onRequestPermission: () -> Unit, push: (Route) -> Unit, openSettings: () -> Unit,
+    onRequestPermission: () -> Unit, push: (Route) -> Unit, openSettings: () -> Unit, openArtist: (String) -> Unit,
 ) {
     val c = MaterialTheme.colorScheme
     var searching by rememberSaveable { mutableStateOf(query.isNotEmpty()) }
@@ -211,17 +216,17 @@ private fun HomeScreen(
             filtered.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Nothing matches your search.", color = c.onSurfaceVariant) }
             else -> when (tab) {
                 0 -> LazyColumn(
-                    state = songsState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = MiniClearance),
+                    state = songsState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = miniClearance(vm)),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     item { TxaoButton("Shuffle all · ${filtered.size}", Icons.Filled.Shuffle, Modifier.fillMaxWidth()) { vm.play(filtered, shuffled = true) } }
                     items(filtered, key = { it.id }) { t ->
-                        SongRow(t, t.id == vm.currentId, { vm.play(filtered, t) }, { vm.playNext(t) }, { push(Route.Edit(listOf(t))) })
+                        SongRow(t, t.id == vm.currentId, { vm.play(filtered, t) }, { vm.playNext(t) }, { push(Route.Edit(listOf(t))) }, { openArtist(t.artist) })
                     }
                 }
                 1 -> LazyVerticalGrid(
                     GridCells.Fixed(2), state = albumsState,
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = MiniClearance),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = miniClearance(vm)),
                     verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     gridItems(albums, key = { it.id.toString() + it.name }) { a ->
@@ -229,7 +234,7 @@ private fun HomeScreen(
                     }
                 }
                 else -> LazyColumn(
-                    state = artistsState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = MiniClearance),
+                    state = artistsState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = miniClearance(vm)),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(artists, key = { it.name }) { a ->
@@ -260,14 +265,14 @@ private fun TabPills(selected: Int, onSelect: (Int) -> Unit) {
 }
 
 @Composable
-private fun DetailScreen(vm: PlayerViewModel, d: Route.Detail, back: () -> Unit, push: (Route) -> Unit) {
+private fun DetailScreen(vm: PlayerViewModel, d: Route.Detail, back: () -> Unit, openArtist: (String) -> Unit, push: (Route) -> Unit) {
     val c = MaterialTheme.colorScheme
     Column(Modifier.screen()) {
         TopBar("", onBack = back) {
             GlassIconButton(Icons.Filled.Edit, "Edit info") { push(Route.Edit(d.tracks)) }
         }
         LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = MiniClearance),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = miniClearance(vm)),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
@@ -282,7 +287,7 @@ private fun DetailScreen(vm: PlayerViewModel, d: Route.Detail, back: () -> Unit,
                 }
             }
             items(d.tracks, key = { it.id }) { t ->
-                SongRow(t, t.id == vm.currentId, { vm.play(d.tracks, t) }, { vm.playNext(t) }, { push(Route.Edit(listOf(t))) })
+                SongRow(t, t.id == vm.currentId, { vm.play(d.tracks, t) }, { vm.playNext(t) }, { push(Route.Edit(listOf(t))) }, { openArtist(t.artist) })
             }
         }
     }
@@ -292,7 +297,12 @@ private fun DetailScreen(vm: PlayerViewModel, d: Route.Detail, back: () -> Unit,
 private fun MiniPlayer(vm: PlayerViewModel, track: Track, onOpen: () -> Unit) {
     val c = MaterialTheme.colorScheme
     val frac = if (vm.durationMs > 0) (vm.positionMs.toFloat() / vm.durationMs).coerceIn(0f, 1f) else 0f
-    GlassCard(Modifier.navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth(), tint = c.surfaceContainerHigh.copy(alpha = 0.7f)) {
+    // Fully opaque so list rows never show through it.
+    val shape = RoundedCornerShape(28.dp)
+    Box(
+        Modifier.navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 8.dp).fillMaxWidth()
+            .clip(shape).background(c.surfaceContainerHigh).border(1.dp, c.onSurface.copy(alpha = 0.14f), shape),
+    ) {
         Column {
             Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(track.uri, 52.dp, Modifier.size(52.dp), RoundedCornerShape(16.dp))
@@ -313,7 +323,7 @@ private fun MiniPlayer(vm: PlayerViewModel, track: Track, onOpen: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlayerScreen(vm: PlayerViewModel, close: () -> Unit) {
+private fun PlayerScreen(vm: PlayerViewModel, close: () -> Unit, openArtist: (String) -> Unit) {
     val c = MaterialTheme.colorScheme
     val track = vm.current
     var showQueue by remember { mutableStateOf(false) }
@@ -325,13 +335,20 @@ private fun PlayerScreen(vm: PlayerViewModel, close: () -> Unit) {
         Row(Modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassIconButton(Icons.Filled.KeyboardArrowDown, "Close") { close() }
             Text("Now playing", Modifier.weight(1f), textAlign = TextAlign.Center, color = c.onSurfaceVariant)
+            vm.sleepEndsAt?.let { end ->
+                Text("${((end - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min", color = c.primary, style = MaterialTheme.typography.bodySmall)
+            }
+            GlassIconButton(Icons.Filled.Timer, "Sleep timer", tinted = vm.sleepEndsAt != null) { showSleep = true }
             GlassIconButton(Icons.AutoMirrored.Filled.QueueMusic, "Queue") { showQueue = true }
         }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.weight(0.6f))
         Artwork(track?.uri, 360.dp, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(36.dp))
         Spacer(Modifier.height(24.dp))
         Text(track?.title.orEmpty(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-        Text(track?.artist.orEmpty(), color = c.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            track?.artist.orEmpty(), color = c.primary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { track?.let { openArtist(it.artist) } }.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
         Spacer(Modifier.height(12.dp))
         Slider(
             value = shown.coerceIn(0f, 1f), onValueChange = { dragging = it },
@@ -353,13 +370,7 @@ private fun PlayerScreen(vm: PlayerViewModel, close: () -> Unit) {
                 tinted = vm.repeatMode != Player.REPEAT_MODE_OFF,
             ) { vm.cycleRepeat() }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            GlassIconButton(Icons.Filled.Bedtime, "Sleep timer", tinted = vm.sleepEndsAt != null) { showSleep = true }
-            vm.sleepEndsAt?.let { end ->
-                Text("  ${((end - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1)} min", color = c.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.weight(0.4f))
     }
 
     if (showQueue) ModalBottomSheet(onDismissRequest = { showQueue = false }, containerColor = c.surfaceContainer) {

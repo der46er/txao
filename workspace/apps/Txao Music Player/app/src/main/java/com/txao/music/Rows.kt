@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -31,7 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SongRow(track: Track, playing: Boolean, onClick: () -> Unit, onPlayNext: () -> Unit, onEdit: () -> Unit) {
+fun SongRow(track: Track, playing: Boolean, onClick: () -> Unit, onPlayNext: () -> Unit, onEdit: () -> Unit, onArtist: () -> Unit) {
     val c = MaterialTheme.colorScheme
     var menu by remember { mutableStateOf(false) }
     GlassCard(Modifier.fillMaxWidth(), radius = 20.dp, tint = if (playing) c.primary.copy(alpha = 0.16f) else null) {
@@ -45,16 +46,22 @@ fun SongRow(track: Track, playing: Boolean, onClick: () -> Unit, onPlayNext: () 
                     track.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold,
                     color = if (playing) c.primary else c.onSurface,
                 )
-                Text(
-                    "${track.artist} · ${Library.formatDuration(track.durationMs)}", maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant,
-                )
+                Row {
+                    // Tapping the artist opens their profile straight away.
+                    Text(
+                        track.artist, Modifier.weight(1f, fill = false).clickable(onClick = onArtist), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant,
+                    )
+                    Text(" · ${Library.formatDuration(track.durationMs)}", maxLines = 1, style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
+                }
             }
             Box {
                 GlassIconButton(Icons.Filled.MoreVert, "More", size = 44.dp) { menu = true }
                 DropdownMenu(menu, { menu = false }) {
                     DropdownMenuItem(text = { Text("Play next") }, leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.PlaylistAdd, null) },
                         onClick = { menu = false; onPlayNext() })
+                    DropdownMenuItem(text = { Text("Go to artist") }, leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.Person, null) },
+                        onClick = { menu = false; onArtist() })
                     DropdownMenuItem(text = { Text("Edit info") }, leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.Edit, null) },
                         onClick = { menu = false; onEdit() })
                 }
