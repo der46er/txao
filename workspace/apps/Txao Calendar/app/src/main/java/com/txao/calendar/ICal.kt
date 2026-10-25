@@ -91,7 +91,7 @@ object ICal {
         )
     }
 
-    private fun rrule(r: Repeat, allDay: Boolean, zone: ZoneId): String? {
+    fun rrule(r: Repeat, allDay: Boolean, zone: ZoneId): String? {
         if (r.freq == Freq.NONE) return null
         val parts = arrayListOf("FREQ=${r.freq.name}")
         if (r.interval > 1) parts += "INTERVAL=${r.interval}"
@@ -103,7 +103,7 @@ object ICal {
         return parts.joinToString(";")
     }
 
-    private fun parseRule(v: String, zone: ZoneId): Repeat? {
+    fun parseRule(v: String, zone: ZoneId): Repeat? {
         val m = v.split(';').mapNotNull { it.split('=', limit = 2).takeIf { p -> p.size == 2 }?.let { p -> p[0].uppercase() to p[1] } }.toMap()
         val freq = when (m["FREQ"]) {
             "DAILY" -> Freq.DAILY; "WEEKLY" -> Freq.WEEKLY; "MONTHLY" -> Freq.MONTHLY; "YEARLY" -> Freq.YEARLY

@@ -44,7 +44,21 @@ class ICalTest {
     }
 
     @Test fun jsonRoundTrip() {
-        val e = Event("i", "t", "n", "l", 1, 2, true, 3, Repeat(Freq.MONTHLY, 2, 0, 99, null), listOf(-540, 10), listOf(5))
+        val e = Event("i", "t", "n", "l", 1, 2, true, 0xFF039BE5.toInt(), Repeat(Freq.MONTHLY, 2, 0, 99, null), listOf(-540, 10), listOf(5), calendarId = "work")
         assertEquals(e, EventJson.listFromJson(EventJson.listToJson(listOf(e))).single())
+    }
+
+    @Test fun oldColourIndexMapsToPaletteColour() {
+        val o = EventJson.toJson(Event("o", start = 1, end = 2))
+        o.put("color", 2)
+        o.remove("calendarId")
+        val back = EventJson.fromJson(o)
+        assertEquals(LegacyColors[2], back.color)
+        assertEquals(LOCAL_CALENDAR, back.calendarId)
+    }
+
+    @Test fun calendarsRoundTrip() {
+        val c = listOf(Cal("local", "My calendar"), Cal("x", "Work", 0xFFD50000.toInt()))
+        assertEquals(c, CalJson.listFromJson(CalJson.listToJson(c)))
     }
 }

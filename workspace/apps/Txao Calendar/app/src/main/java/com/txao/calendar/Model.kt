@@ -35,10 +35,54 @@ data class Event(
     val repeat: Repeat = Repeat(),
     val reminders: List<Int> = emptyList(),
     val exdates: List<Long> = emptyList(),
-)
+    val calendarId: String = LOCAL_CALENDAR,
+    /** Device-calendar events only: the raw RRULE of the series (empty when it doesn't repeat). Not stored by the app. */
+    val rrule: String = "",
+    /** Device-calendar events only: start of the whole series, since [start] is the shown occurrence. Not stored by the app. */
+    val seriesStart: Long = 0,
+) {
+    val repeats: Boolean get() = repeat.freq != Freq.NONE || rrule.isNotEmpty()
+    val isDevice: Boolean get() = calendarId.startsWith(DEVICE_PREFIX)
+}
+
+const val LOCAL_CALENDAR = "local"
+const val DEVICE_PREFIX = "dev:"
+
+/**
+ * A calendar events belong to. [color] is ARGB. Calendars from the phone's calendar provider have ids "dev:<id>"
+ * and are never stored by this app.
+ */
+data class Cal(
+    val id: String,
+    val name: String,
+    val color: Int = DefaultCalendarColor,
+    val account: String = "",
+    val writable: Boolean = true,
+) {
+    val isDevice: Boolean get() = id.startsWith(DEVICE_PREFIX)
+}
+
+object CalJson {
+    fun listToJson(cals: List<Cal>): String = JSONArray().also { a ->
+        cals.forEach { c -> a.put(JSONObject().put("id", c.id).put("name", c.name).put("color", c.color)) }
+    }.toString()
+
+    fun listFromJson(text: String): List<Cal> {
+        val a = JSONArray(text)
+        return (0 until a.length()).mapNotNull {
+            runCatching {
+                val o = a.getJSONObject(it)
+                Cal(o.getString("id"), o.optString("name"), o.optInt("color", DefaultCalendarColor))
+            }.getOrNull()
+        }
+    }
+}
 
 /** One concrete showing of an [Event] (a repeating event has many). */
-data class Occurrence(val event: Event, val start: Long, val end: Long)
+data class Occurrence(val event: Event, val start: Long, val end: Long) {
+    /** All-day and 24 h+ events sit in the banner row on top of day/week views instead of the hour grid. */
+    val banner: Boolean get() = event.allDay || end - start >= 24 * 3600_000L
+}
 
 object EventJson {
     fun toJson(e: Event): JSONObject = JSONObject().apply {
@@ -47,6 +91,7 @@ object EventJson {
         put("freq", e.repeat.freq.name); put("interval", e.repeat.interval); put("weekdays", e.repeat.weekdays)
         e.repeat.until?.let { put("until", it) }
         e.repeat.count?.let { put("count", it) }
+        put("calendarId", e.calendarId)
         put("reminders", JSONArray(e.reminders))
         put("exdates", JSONArray(e.exdates))
     }
@@ -59,7 +104,8 @@ object EventJson {
         start = o.getLong("start"),
         end = o.getLong("end"),
         allDay = o.optBoolean("allDay"),
-        color = o.optInt("color"),
+        color = o.optInt("color").let { if (it in 1..7) LegacyColors[it] else it },
+        calendarId = o.optString("calendarId", LOCAL_CALENDAR).ifEmpty { LOCAL_CALENDAR },
         repeat = Repeat(
             freq = runCatching { Freq.valueOf(o.optString("freq", "NONE")) }.getOrDefault(Freq.NONE),
             interval = o.optInt("interval", 1).coerceAtLeast(1),
