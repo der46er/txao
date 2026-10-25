@@ -303,8 +303,8 @@ private fun detailsOf(ctx: Context, item: MediaItem): List<Pair<String, String>>
             e.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)?.let { out += "Exposure" to "$it s" }
             e.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)?.let { out += "ISO" to it }
             e.getAttribute(ExifInterface.TAG_FOCAL_LENGTH)?.let { out += "Focal length" to it }
-            val ll = e.latLong
-            if (ll != null) out += "Location" to String.format(java.util.Locale.US, "%.5f, %.5f", ll[0], ll[1])
+            val ll = FloatArray(2)
+            if (e.getLatLong(ll)) out += "Location" to String.format(java.util.Locale.US, "%.5f, %.5f", ll[0], ll[1])
         }
     }
     return out
