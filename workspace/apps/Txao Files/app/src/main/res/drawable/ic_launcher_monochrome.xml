@@ -1,0 +1,8 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Themed-icon version: only alpha matters, the system tints it. -->
+    <path android:pathData="M30,66V40a5,5 0 0 1 5,-5h13l6,7h19a5,5 0 0 1 5,5v19z"
+        android:fillColor="#00000000" android:strokeWidth="3" android:strokeColor="#FFFFFFFF" android:strokeLineJoin="round" />
+    <path android:pathData="M30,72l5.5,-24h43l-5.5,24z" android:fillColor="#FFFFFFFF" />
+</vector>
