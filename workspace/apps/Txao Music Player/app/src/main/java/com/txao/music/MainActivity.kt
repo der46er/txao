@@ -14,6 +14,7 @@ import android.provider.MediaStore
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +86,13 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             TxaoTheme(prefs) {
+                val dark = isTxaoDark(prefs)
+                LaunchedEffect(dark) {
+                    // Icons and clock follow the app theme, not the system one.
+                    val bars = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                }
                 GlassBackground {
                     val alpha = remember { Animatable(0f) }
                     LaunchedEffect(Unit) { alpha.animateTo(1f, tween(TxaoMotion.AppearMs)) }

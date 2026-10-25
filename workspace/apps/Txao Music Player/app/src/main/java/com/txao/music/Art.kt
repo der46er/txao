@@ -32,9 +32,22 @@ object Art {
         cache.get(ck)?.let { return it }
         if (ck in misses) return null
         val uri = Uri.parse(key)
-        val bmp = fromThumbnail(ctx, uri, px) ?: fromEmbedded(ctx, uri, px)
+        val bmp = fromOverride(ctx, uri, px) ?: fromThumbnail(ctx, uri, px) ?: fromEmbedded(ctx, uri, px)
         if (bmp != null) cache.put(ck, bmp) else misses.add(ck)
         return bmp
+    }
+
+    /** Cover chosen in the editor for a non-MP3 file. */
+    private fun fromOverride(ctx: Context, uri: Uri, px: Int): Bitmap? {
+        val id = uri.lastPathSegment?.toLongOrNull() ?: return null
+        val f = Overrides.coverFile(ctx, id)
+        return if (f.exists()) runCatching { decode(f.readBytes(), px) }.getOrNull() else null
+    }
+
+    /** Forget cached covers and misses, e.g. after tags or covers were edited. */
+    fun clear() {
+        cache.evictAll()
+        misses.clear()
     }
 
     private fun fromThumbnail(ctx: Context, uri: Uri, px: Int): Bitmap? =

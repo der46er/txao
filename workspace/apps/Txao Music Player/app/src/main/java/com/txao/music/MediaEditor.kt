@@ -38,6 +38,11 @@ object MediaEditor {
 
     /** Throws if the file can't be written (SecurityException when write access hasn't been granted). */
     fun write(ctx: Context, t: Track, edit: TagEdit) {
+        if (!isMp3(t)) {
+            // Tags can't be rewritten in other formats; keep the edit in the app's library instead (no file access needed).
+            Overrides.save(ctx, t.id, edit)
+            return
+        }
         val uri = Uri.parse(t.uri)
         val path = if (hasAllFilesAccess()) pathOf(ctx, uri) else null
         if (isMp3(t)) {

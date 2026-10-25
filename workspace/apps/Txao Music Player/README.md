@@ -2,7 +2,7 @@
 
 Offline music player in the TXAO glass style: songs / albums / artists with cover art, background playback, queue, shuffle, repeat, sleep timer, and an Edit info screen that writes tags (MP3) and library info.
 
-Features (1.1.0): TXAO glass UI (shared theme, orbs, motion), cover art everywhere, songs / albums / artists browsing, search, background playback with media notification and lock-screen controls, queue-aware shuffle and repeat (off / all / one), seek bar, sleep timer, and **Edit info** (title, artist, album, album artist, year, genre, track number, cover art; single song or a whole album/artist). MP3 files get ID3v2.4 tags written into the file (`Id3.kt`); other formats are updated in the library only. Android asks once per edit to allow changing the files.
+Features (1.1.0): TXAO glass UI (shared theme, orbs, motion), cover art everywhere, songs / albums / artists browsing, search, background playback with media notification and lock-screen controls, queue-aware shuffle and repeat (off / all / one), seek bar, sleep timer, and **Edit info** (title, artist, album, album artist, year, genre, track number, cover art; single song or a whole album/artist). MP3 files get ID3v2.4 tags written into the file (`Id3.kt`); other formats (WAV, FLAC, M4A, ...) keep the edit inside the app, applied on top of the library (`Overrides.kt`). Android asks once per edit to allow changing the files.
 
 All code is original and written from scratch (see `../../CONVENTIONS.md`, clean-room rule).
 
