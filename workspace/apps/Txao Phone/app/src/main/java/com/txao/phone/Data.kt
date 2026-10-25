@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.BlockedNumberContract
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.provider.ContactsContract.CommonDataKinds.Phone as PhoneColumns
 
 data class Contact(val id: Long, val name: String, val number: String, val starred: Boolean) {
     val lookupUri: Uri get() = ContactsContract.Contacts.getLookupUri(id, null) ?: Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, id.toString())
@@ -26,10 +27,9 @@ data class CallGroup(val calls: List<CallEntry>) {
 object Data {
     fun contacts(ctx: Context): List<Contact> {
         val out = ArrayList<Contact>()
-        val p = ContactsContract.CommonDataKinds.Phone
-        val cols = arrayOf(p.CONTACT_ID, p.DISPLAY_NAME, p.NUMBER, p.STARRED)
+        val cols = arrayOf(PhoneColumns.CONTACT_ID, PhoneColumns.DISPLAY_NAME, PhoneColumns.NUMBER, PhoneColumns.STARRED)
         try {
-            ctx.contentResolver.query(p.CONTENT_URI, cols, null, null, "${p.DISPLAY_NAME} COLLATE NOCASE")?.use { c ->
+            ctx.contentResolver.query(PhoneColumns.CONTENT_URI, cols, null, null, "${PhoneColumns.DISPLAY_NAME} COLLATE NOCASE")?.use { c ->
                 while (c.moveToNext()) out += Contact(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getInt(3) == 1)
             }
         } catch (_: SecurityException) {

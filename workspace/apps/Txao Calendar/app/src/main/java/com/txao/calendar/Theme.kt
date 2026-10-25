@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -39,8 +41,10 @@ fun TxaoTheme(content: @Composable () -> Unit) {
             surfaceContainer = Color(0xFF171B26), surfaceContainerHigh = Color(0xFF1D2230),
             error = Color(0xFFFF8A9B),
         ),
-        content = content,
-    )
+    ) {
+        // No Surface at the root, so set the content colour explicitly (the default is black).
+        CompositionLocalProvider(LocalContentColor provides Color(0xFFEDEBF5), content = content)
+    }
 }
 
 /** Dark ink with soft lavender / rose / blue glows, matching the launcher icon. */

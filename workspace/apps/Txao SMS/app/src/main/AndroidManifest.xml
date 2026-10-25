@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_MMS" />
     <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
+    <!-- Android requires the default SMS app to hold this (cell broadcast / emergency alerts); the app does not read them. -->
+    <uses-permission android:name="android.permission.READ_CELL_BROADCASTS" />
     <!-- Show contact names and pick recipients. Optional. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
