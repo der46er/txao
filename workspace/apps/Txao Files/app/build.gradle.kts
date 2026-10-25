@@ -13,8 +13,8 @@ android {
         applicationId = "com.txao.files"
         minSdk = 30
         targetSdk = 37
-        versionCode = 14
-        versionName = "1.2.7"
+        versionCode = 15
+        versionName = "1.3.0"
     }
 
     val keystoreProps = Properties().apply {
@@ -60,6 +60,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
+    implementation("androidx.biometric:biometric:1.1.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("org.mockito:mockito-core:5.20.0")

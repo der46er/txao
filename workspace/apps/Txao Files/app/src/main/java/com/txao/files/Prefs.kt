@@ -1,7 +1,6 @@
 package com.txao.files
 
 import android.content.Context
-import java.io.File
 
 enum class FolderLayout { Grid, List }
 
@@ -62,6 +61,35 @@ class Prefs(private val context: Context) {
         get() = sp.getString("last_seen_version", "") ?: ""
         set(v) = sp.edit().putString("last_seen_version", v).apply()
 
-    /** Optional user-picked wallpaper, stored privately inside the app. */
-    val backgroundFile: File get() = File(context.filesDir, "background.img")
+    /** Palette offered when colouring folders, as "#RRGGBB" codes in the user's order. */
+    var palette: List<String>
+        get() = sp.getString("palette", null)?.split(',')?.filter { Hex.parse(it) != null } ?: DefaultPalette
+        set(v) = sp.edit().putString("palette", v.joinToString(",")).apply()
+
+    var folderColors: Map<String, Int>
+        get() = (sp.getString("folder_colors", "") ?: "").lines().mapNotNull {
+            val i = it.lastIndexOf('\t')
+            val c = if (i > 0) it.substring(i + 1).toIntOrNull() else null
+            if (c == null) null else it.substring(0, i) to c
+        }.toMap()
+        set(v) = sp.edit().putString("folder_colors", v.entries.joinToString("\n") { it.key + "\t" + it.value }).apply()
+
+    /** Folder the Files tab opens in; empty means the internal storage root. */
+    var homePath: String
+        get() = sp.getString("home_path", "") ?: ""
+        set(v) = sp.edit().putString("home_path", v).apply()
+
+    /** "device" (fingerprint / phone lock) or "password". */
+    var vaultMode: String
+        get() = sp.getString("vault_mode", "device") ?: "device"
+        set(v) = sp.edit().putString("vault_mode", v).apply()
+
+    /** The wrapped vault master key and, in password mode, the password salt (both Base64). */
+    var vaultBlob: String
+        get() = sp.getString("vault_blob", "") ?: ""
+        set(v) = sp.edit().putString("vault_blob", v).apply()
+
+    var vaultSalt: String
+        get() = sp.getString("vault_salt", "") ?: ""
+        set(v) = sp.edit().putString("vault_salt", v).apply()
 }

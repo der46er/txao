@@ -7,6 +7,14 @@ data class Release(val version: String, val notes: List<String>)
 /** Release notes, newest first. Add an entry here with every version bump. */
 object Changelog {
     val releases = listOf(
+        Release("1.3.0", listOf(
+            "Recents loads 20 files at a time and fills in as you scroll",
+            "Color any folder: 10 default colors or your own hex code",
+            "Settings: manage and reorder your folder colors, choose the home folder",
+            "Locked files are now really encrypted; unlock with fingerprint / phone lock or your own password",
+            "Files locked by older versions are encrypted the first time you unlock",
+            "Removed the custom background image",
+        )),
         Release("1.2.7", listOf(
             "Fixed the squeezed, glitching layout while switching between grid and list folders",
         )),

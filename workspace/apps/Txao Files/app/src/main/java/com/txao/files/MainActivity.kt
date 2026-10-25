@@ -6,15 +6,15 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.fragment.app.FragmentActivity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     /** Bumped on every resume so the app re-checks the all-files permission after the settings screen. */
     private var resumeTick by mutableIntStateOf(0)
 
