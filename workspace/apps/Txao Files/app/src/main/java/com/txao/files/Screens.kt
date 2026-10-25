@@ -10,6 +10,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -237,7 +239,11 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                         AnimatedContent(
                             targetState = path to layout,
                             modifier = Modifier.weight(1f).fillMaxWidth(),
-                            transitionSpec = { fadeIn(tween(fadeMs)) togetherWith fadeOut(tween(fadeMs)) },
+                            // Pure crossfade. Size changes are snapped: animating them squeezed the incoming
+                            // folder into a narrow column while the previous one faded out.
+                            transitionSpec = {
+                                (fadeIn(tween(fadeMs)) togetherWith fadeOut(tween(fadeMs))) using SizeTransform(clip = false) { _, _ -> snap() }
+                            },
                             label = "folder",
                         ) { (p, l) ->
                             FolderContent(
@@ -372,7 +378,12 @@ private fun FolderContent(
     val loaded by produceState<List<Entry>?>(null, dir.path, refresh, showHidden, sortField, sortAsc) {
         value = withContext(Dispatchers.IO) { listDir(dir, showHidden, sortField, sortAsc) }
     }
-    val list = loaded ?: return
+    val list = loaded
+    if (list == null) {
+        // Keep the full size while loading so the container never collapses mid-transition.
+        Box(Modifier.fillMaxSize())
+        return
+    }
     LaunchedEffect(list) { onEntries(list) }
     if (list.isEmpty()) {
         Box(Modifier.fillMaxSize().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {

@@ -7,6 +7,9 @@ data class Release(val version: String, val notes: List<String>)
 /** Release notes, newest first. Add an entry here with every version bump. */
 object Changelog {
     val releases = listOf(
+        Release("1.2.7", listOf(
+            "Fixed the squeezed, glitching layout while switching between grid and list folders",
+        )),
         Release("1.2.6", listOf(
             "Plain fade between folders, no sideways sliding",
             "Fade length is adjustable in Settings (0.1 s to 0.9 s)",
