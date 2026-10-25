@@ -34,6 +34,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -41,7 +46,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -85,6 +89,9 @@ fun ViewerScreen(
     var slideshow by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf<MediaItem?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var moreOpen by remember { mutableStateOf(false) }
+    var pickAlbum by remember { mutableStateOf(false) }
+    var dragY by remember { mutableFloatStateOf(0f) }
     val current = items[pager.currentPage]
 
     LaunchedEffect(slideshow) {
@@ -94,10 +101,26 @@ fun ViewerScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = (1f - kotlin.math.abs(dragY) / 900f).coerceIn(0.25f, 1f)))) {
         HorizontalPager(
             state = pager, userScrollEnabled = !zoomed, beyondViewportPageCount = 1,
-            modifier = Modifier.fillMaxSize(),
+            // Swipe down to close, swipe up for details; ignored while zoomed so panning still works.
+            modifier = Modifier.fillMaxSize()
+                .graphicsLayer { translationY = dragY }
+                .pointerInput(zoomed, pager.currentPage) {
+                    if (!zoomed) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                if (dragY > 220f) onClose() else if (dragY < -160f) info = current
+                                dragY = 0f
+                            },
+                            onDragCancel = { dragY = 0f },
+                        ) { change, amount ->
+                            dragY += amount
+                            change.consume()
+                        }
+                    }
+                },
         ) { page ->
             val item = items[page]
             if (item.isVideo) {
@@ -118,12 +141,6 @@ fun ViewerScreen(
                     Text(current.name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${pager.currentPage + 1} / ${items.size}", color = Color(0xB3FFFFFF), fontSize = 12.sp)
                 }
-                if (current.id >= 0) {
-                    val fav = current.id in favorites
-                    IconButton(onClick = { onFavorite(current.id) }) {
-                        Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite", tint = Color.White)
-                    }
-                }
             }
             Row(
                 Modifier.fillMaxWidth().align(Alignment.BottomCenter).background(Color(0x99000000))
@@ -131,19 +148,44 @@ fun ViewerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 BarButton(Icons.Default.Share, "Share") { share(ctx, current) }
-                if (items.size > 1) {
-                    BarButton(if (slideshow) Icons.Default.Pause else Icons.Default.PlayArrow, "Slideshow") { slideshow = !slideshow }
-                }
                 if (!current.isVideo && onEdit != null) BarButton(Icons.Default.Edit, "Edit") { onEdit(current) }
-                if (!current.isVideo) BarButton(Icons.Default.Wallpaper, "Wallpaper") { wallpaper(ctx, current) }
-                BarButton(Icons.Default.Info, "Details") { info = current }
+                if (current.id >= 0) {
+                    val fav = current.id in favorites
+                    BarButton(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favorite") { onFavorite(current.id) }
+                }
                 if (canDelete) BarButton(Icons.Default.Delete, "Delete") {
                     if (android.os.Build.VERSION.SDK_INT >= 30) {
                         actions.trash(listOf(current), true, onClose)
                     } else confirmDelete = true
                 }
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    IconButton(onClick = { moreOpen = true }) { Icon(Icons.Default.MoreVert, "More", tint = Color.White) }
+                    DropdownMenu(moreOpen, { moreOpen = false }) {
+                        DropdownMenuItem(text = { Text("Details") }, onClick = { info = current; moreOpen = false })
+                        if (current.id >= 0) {
+                            DropdownMenuItem(text = { Text("Add to album") }, onClick = { pickAlbum = true; moreOpen = false })
+                        }
+                        if (items.size > 1) {
+                            DropdownMenuItem(
+                                text = { Text(if (slideshow) "Stop slideshow" else "Slideshow") },
+                                onClick = { slideshow = !slideshow; moreOpen = false },
+                            )
+                        }
+                        if (!current.isVideo) {
+                            DropdownMenuItem(text = { Text("Set as wallpaper") }, onClick = { wallpaper(ctx, current); moreOpen = false })
+                        }
+                    }
+                }
             }
         }
+    }
+
+    if (pickAlbum) {
+        AlbumPickerDialog(
+            names = actions.albumNames(),
+            onPick = { name -> actions.addToAlbum(name, listOf(current)); pickAlbum = false },
+            onDismiss = { pickAlbum = false },
+        )
     }
 
     info?.let { item ->

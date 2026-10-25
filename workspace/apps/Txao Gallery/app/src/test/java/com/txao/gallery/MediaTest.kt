@@ -91,4 +91,28 @@ class MediaTest {
         assertEquals(listOf(50, 0, 300, 300), centerCrop(400, 300, 1f).toList())
         assertEquals(listOf(0, 75, 400, 150), centerCrop(400, 300, 400f / 150f).toList())
     }
+
+    @Test fun monthGroupingMergesDaysAndHeadersCarryIds() {
+        val items = listOf(item(1, "a", ms(2026, 9, 23)), item(2, "b", ms(2026, 9, 2)), item(3, "c", ms(2026, 8, 1)))
+        val byDay = buildEntries(items, grouped = true, grouping = Grouping.Day).filterIsInstance<Entry.Header>()
+        val byMonth = buildEntries(items, grouped = true, grouping = Grouping.Month).filterIsInstance<Entry.Header>()
+        assertEquals(3, byDay.size)
+        assertEquals(2, byMonth.size)
+        assertEquals(listOf(1L, 2L), byMonth[0].ids)
+    }
+
+    @Test fun trashDaysLeftRoundsUp() {
+        val day = 86_400_000L
+        assertEquals(null, trashDaysLeft(item(1, "a", 1)))
+        assertEquals(30, trashDaysLeft(item(1, "a", 1).copy(expiresMs = 30 * day), 0))
+        assertEquals(1, trashDaysLeft(item(1, "a", 1).copy(expiresMs = 1000), 0))
+        assertEquals(0, trashDaysLeft(item(1, "a", 1).copy(expiresMs = 5), 10))
+    }
+
+    @Test fun customAlbumsRoundTrip() {
+        val albums = mapOf("Trip" to setOf(1L, 2L), "Empty" to emptySet())
+        assertEquals(albums, decodeAlbums(encodeAlbums(albums)))
+        assertEquals(emptyMap<String, Set<Long>>(), decodeAlbums("not json"))
+        assertEquals(emptyMap<String, Set<Long>>(), decodeAlbums(null))
+    }
 }
