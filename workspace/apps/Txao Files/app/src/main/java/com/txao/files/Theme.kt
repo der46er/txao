@@ -5,9 +5,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
@@ -50,7 +52,9 @@ private val TxaoDark = darkColorScheme(
 
 @Composable
 fun TxaoTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = TxaoDark, content = content)
+    MaterialTheme(colorScheme = TxaoDark) {
+        CompositionLocalProvider(LocalContentColor provides TxaoDark.onBackground, content = content)
+    }
 }
 
 /**
