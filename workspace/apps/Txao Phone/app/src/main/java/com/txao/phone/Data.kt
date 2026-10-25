@@ -13,8 +13,13 @@ data class Contact(val id: Long, val name: String, val number: String, val starr
 }
 
 data class CallEntry(val id: Long, val number: String, val name: String?, val type: Int, val date: Long, val duration: Long) {
-    val missed get() = type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE
+    val missed get() = type == CallLog.Calls.MISSED_TYPE
+    val declined get() = type == CallLog.Calls.REJECTED_TYPE
+    val blocked get() = type == CallLog.Calls.BLOCKED_TYPE
     val outgoing get() = type == CallLog.Calls.OUTGOING_TYPE
+    val kind get() = when {
+        missed -> "Missed"; declined -> "Declined"; blocked -> "Blocked"; outgoing -> "Outgoing"; else -> "Incoming"
+    }
     val label get() = name?.takeIf { it.isNotBlank() } ?: PhoneUtil.pretty(number).ifEmpty { "Unknown" }
 }
 

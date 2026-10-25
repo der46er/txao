@@ -120,7 +120,7 @@ fun RecentsScreen(recents: List<CallEntry>, onCall: (String) -> Unit, onOpen: (S
                 item(key = g.first.id) {
                     val c = g.first
                     val count = if (g.count > 1) " (${g.count})" else ""
-                    val arrow = when { c.missed -> "Missed"; c.outgoing -> "Outgoing"; else -> "Incoming" }
+                    val arrow = c.kind
                     PersonRow(c.label + count, "$arrow · " + time(ctx, c.date), { onOpen(c.number, c.label) }, if (c.missed) Danger else Color.Unspecified, c.number) {
                         IconButton({ onCall(c.number) }) { Icon(Icons.Filled.Call, "Call back", tint = Mint) }
                     }

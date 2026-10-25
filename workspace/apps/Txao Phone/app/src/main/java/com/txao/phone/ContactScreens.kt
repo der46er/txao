@@ -173,7 +173,7 @@ fun ContactPage(
         if (history.isNotEmpty()) item { Spacer(Modifier.height(8.dp)); SectionHeader("History") }
         items(history, key = { it.id }) { c ->
             val icon = when { c.missed -> Icons.AutoMirrored.Filled.CallMissed; c.outgoing -> Icons.AutoMirrored.Filled.CallMade; else -> Icons.AutoMirrored.Filled.CallReceived }
-            val kind = when { c.missed -> "Missed"; c.outgoing -> "Outgoing"; else -> "Incoming" }
+            val kind = c.kind
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(icon, null, tint = if (c.missed) Danger else Muted)
                 Column(Modifier.weight(1f)) {
