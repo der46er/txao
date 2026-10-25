@@ -6,6 +6,9 @@ Dialer for Android in the TXAO glass look, with the layout and features people k
 - Recents grouped by caller, with an All / Missed filter, day headings and a call-details page (history, call, message, block, add contact, delete history)
 - Contact photos everywhere (lists, favorites, call details, in-call and incoming screens), with a tinted initial as fallback
 - Contacts in alphabetical sections; create, edit and delete contacts inside the app (name, several phones and emails, address, company, birthday, notes, photo)
+- Custom background image per contact (editor), used behind their page and the call screen with a readability scrim
+- Usernames on WhatsApp, Telegram, Signal, Messenger, Instagram, Discord, Snapchat, X and Skype, tap to open the chat
+- Settings: optionally save new contacts to a Google account so they sync (off by default), editable decline quick replies
 - Contact page with photo header, star, edit, call / message / video / email / share / block, labelled numbers and emails, and the full call history
 - Search across contacts and recent calls, or call a typed number
 - Keypad with contact suggestions by number or name (T9)

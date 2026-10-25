@@ -125,12 +125,18 @@ fun ContactPage(
     val name = details?.name?.ifEmpty { null } ?: title
     val primary = details?.phones?.firstOrNull { it.primary }?.value ?: numbers.firstOrNull() ?: number
     val photo = rememberPhoto(details?.photoUri, 1024)
+    val bg = rememberPhoto(details?.background, 1280)
     val place = PhoneUtil.countryOf(primary)
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 48.dp)) {
         item {
             Box(Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))) {
-                if (photo != null) {
+                if (bg != null) {
+                    // Custom background with a scrim so the buttons and name stay readable; the photo sits on top as an avatar.
+                    Image(bg, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x66000000), Color(0x33000000), Color(0xAA000000)))))
+                    Box(Modifier.align(Alignment.Center)) { Avatar(name, 132.dp, primary, details?.photoUri) }
+                } else if (photo != null) {
                     Image(photo, name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 } else {
                     val tint = avatarTint(name)
@@ -250,12 +256,20 @@ fun EditorScreen(initial: ContactDetails, onCancel: () -> Unit, onSaved: (Long?)
     val ims = remember { mutableStateListOf<ImEntry>().apply { addAll(initial.ims) } }
     var newPhoto by remember { mutableStateOf<ByteArray?>(null) }
     var removePhoto by remember { mutableStateOf(false) }
+    var newBg by remember { mutableStateOf<ByteArray?>(null) }
+    var removeBg by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val editorScroll = rememberScrollState()
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) { newPhoto = Photos.encodeForContact(ctx, uri); removePhoto = false }
     }
+    val pickBg = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) { newBg = Photos.encodeForContact(ctx, uri, 1280); removeBg = false }
+    }
+    val bgPreview = remember(newBg) { newBg?.let { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
+    val bgStored = rememberPhoto(if (removeBg) null else initial.background, 768)
+    val bgShown = bgPreview ?: bgStored
     val preview = remember(newPhoto) { newPhoto?.let { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
     val stored = rememberPhoto(if (removePhoto) null else initial.photoUri, 512)
     val shown = preview ?: stored
@@ -268,7 +282,15 @@ fun EditorScreen(initial: ContactDetails, onCancel: () -> Unit, onSaved: (Long?)
                 if (name.isBlank() && phones.none { it.value.isNotBlank() }) { error = "Add a name or a phone number."; return@Button }
                 val d = initial.copy(name = name, company = company, address = address, birthday = birthday, notes = notes, phones = phones.toList(), emails = emails.toList(), ims = ims.filter { it.handle.isNotBlank() })
                 val id = ContactsRepo.save(ctx, ContactEdit(d, newPhoto, removePhoto))
-                if (id == null) error = "Could not save. Is contacts permission granted?" else onSaved(id)
+                if (id == null) {
+                    error = "Could not save. Is contacts permission granted?"
+                } else {
+                    val numbers = phones.map { it.value }
+                    if (removeBg) Backgrounds.remove(ctx, id)
+                    else if (newBg != null) Backgrounds.save(ctx, id, numbers, newBg!!)
+                    else Backgrounds.index(ctx, id, numbers)
+                    onSaved(id)
+                }
             }, Modifier.padding(end = 12.dp)) { Text("Save") }
         }
         Column(Modifier.weight(1f).verticalScroll(editorScroll).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -282,6 +304,20 @@ fun EditorScreen(initial: ContactDetails, onCancel: () -> Unit, onSaved: (Long?)
                     else Text("Add photo", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                 }
             }
+            Box(
+                Modifier.fillMaxWidth().height(120.dp).glass(20.dp).clickable { pickBg.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (bgShown != null) {
+                    Image(bgShown, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    Box(Modifier.fillMaxSize().background(Color(0x55000000)))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Wallpaper, null, tint = Lavender)
+                    Text("  " + if (bgShown == null) "Add background image" else "Change background image")
+                }
+            }
+            if (bgShown != null) TextButton({ newBg = null; removeBg = true }) { Text("Remove background image") }
             Field("Name", name, { name = it }, Icons.Filled.Person)
             phones.forEachIndexed { i, p ->
                 LabeledField(p, true, ContactsRepo.PHONE_TYPES, { phones[i] = it }, { if (phones.size > 1) phones.removeAt(i) else phones[i] = p.copy(value = "") })

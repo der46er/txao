@@ -58,6 +58,7 @@ private sealed interface Screen {
     data class Detail(val number: String, val title: String, val contactId: Long? = null) : Screen
     data class Edit(val details: ContactDetails) : Screen
     data object Blocked : Screen
+    data object Settings : Screen
 }
 
 private val Tabs = listOf("Favorites" to Icons.Filled.Star, "Recents" to Icons.Filled.History, "Contacts" to Icons.Filled.Contacts, "Voicemail" to Icons.Filled.Voicemail)
@@ -140,6 +141,7 @@ private fun App(initialNumber: String) {
             { reload(); screen = null },
         )
         Screen.Blocked -> BlockedScreen { screen = null }
+        Screen.Settings -> SettingsScreen({ screen = null }, { screen = Screen.Blocked }, isDefault, requestDefault)
         null -> Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
             floatingActionButton = {
@@ -178,6 +180,7 @@ private fun App(initialNumber: String) {
                         IconButton({ menu = true }) { Icon(Icons.Filled.MoreVert, "More") }
                         DropdownMenu(menu, { menu = false }) {
                             DropdownMenuItem({ Text("Clear call history") }, { menu = false; confirmClear = true })
+                            DropdownMenuItem({ Text("Settings") }, { menu = false; screen = Screen.Settings })
                             DropdownMenuItem({ Text("Blocked numbers") }, { menu = false; screen = Screen.Blocked })
                             if (!isDefault) {
                                 DropdownMenuItem({ Text("Set as default phone app") }, { menu = false; requestDefault() })
