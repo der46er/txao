@@ -5,9 +5,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -44,7 +46,7 @@ fun TxaoTheme(content: @Composable () -> Unit) {
                 .background(Brush.radialGradient(listOf(Color(0x8CB79CFF), Color.Transparent), center = Offset(1000f, 2200f), radius = 1100f))
                 .background(Brush.radialGradient(listOf(Color(0x66D7A6C6), Color.Transparent), center = Offset(0f, 2000f), radius = 800f))
                 .background(Brush.radialGradient(listOf(Color(0x668FA3D6), Color.Transparent), center = Offset(100f, 100f), radius = 800f)),
-        ) { content() }
+        ) { CompositionLocalProvider(LocalContentColor provides scheme.onBackground) { content() } }
     }
 }
 

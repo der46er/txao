@@ -170,7 +170,7 @@ fun ChatsScreen(
                                 enableDismissFromStartToEnd = selected.isEmpty(),
                                 enableDismissFromEndToStart = selected.isEmpty(),
                                 backgroundContent = {
-                                    Box(
+                                    if (swipe.dismissDirection != SwipeToDismissBoxValue.Settled) Box(
                                         Modifier.fillMaxSize().background(Lavender.copy(alpha = 0.16f)).padding(horizontal = 28.dp),
                                         contentAlignment = if (swipe.dismissDirection == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd,
                                     ) {
