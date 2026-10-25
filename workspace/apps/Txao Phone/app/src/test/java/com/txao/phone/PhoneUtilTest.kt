@@ -70,3 +70,13 @@ class PhoneUtilTest {
         assertEquals("sometime", PhoneUtil.birthdayLabel("sometime"))
     }
 }
+
+class CallEntryKindTest {
+    private fun e(type: Int) = CallEntry(1, "1", null, type, 0, 0)
+
+    @org.junit.Test fun declinedCallsAreNotMissed() {
+        org.junit.Assert.assertEquals("Declined", e(android.provider.CallLog.Calls.REJECTED_TYPE).kind)
+        org.junit.Assert.assertFalse(e(android.provider.CallLog.Calls.REJECTED_TYPE).missed)
+        org.junit.Assert.assertEquals("Missed", e(android.provider.CallLog.Calls.MISSED_TYPE).kind)
+    }
+}
