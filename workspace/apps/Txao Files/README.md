@@ -2,10 +2,11 @@
 
 A glass-style file manager in the look of Fossify File Manager, on the TXAO wallpaper (or a background image you pick).
 
-- **Files**: search pill with layout, sort and more buttons, storage chip + clickable breadcrumb, folder grid or list rows with item counts / size / date, `+` button (new folder, new file, paste), bottom bar with Files, Recents and Storage.
+- **Files**: search pill with layout, sort and more buttons, storage chip + clickable breadcrumb, folder grid or list rows with item counts / size / date, `+` button (new folder, new file, paste), bottom bar (same glass surface as the search pill) with Files, Recents and Locked.
 - **Layout per folder**: the grid/list button affects only the folder you are in and is remembered for it. Folders without a choice use a default: storage roots are a grid, every folder below is a list. "More > Use default layout here" forgets a folder's choice.
 - **Selection**: long-press to select; share, copy, cut, rename, delete.
-- **Recents** (newest files) and **Storage** (used/free per volume, including SD cards).
+- **Recents**: storage usage per volume (including SD cards) on top, then the newest files.
+- **Locked**: private files kept inside the app behind your phone lock; select files > ⋮ > Move to Locked.
 - **Background**: More > Choose background image (kept inside the app only).
 - Needs the "All files access" permission, granted once in Android settings. No analytics, no ads, no accounts, no network permission.
 
