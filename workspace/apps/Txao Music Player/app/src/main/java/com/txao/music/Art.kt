@@ -31,6 +31,14 @@ object Art {
         val ck = "$key@$px"
         cache.get(ck)?.let { return it }
         if (ck in misses) return null
+        if (key.startsWith("artist:")) {
+            // "artist:<name>#<revision>"; the revision only busts the cache after an edit.
+            val name = key.removePrefix("artist:").substringBeforeLast('#')
+            val bytes = ArtistImages.read(ctx, name)
+            val b = bytes?.let { decode(it, px) }
+            if (b != null) cache.put(ck, b) else misses.add(ck)
+            return b
+        }
         val uri = Uri.parse(key)
         val bmp = fromOverride(ctx, uri, px) ?: fromThumbnail(ctx, uri, px) ?: fromEmbedded(ctx, uri, px)
         if (bmp != null) cache.put(ck, bmp) else misses.add(ck)

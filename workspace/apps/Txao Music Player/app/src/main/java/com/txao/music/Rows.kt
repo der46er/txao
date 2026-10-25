@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,16 +33,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SongRow(track: Track, playing: Boolean, onClick: () -> Unit, onPlayNext: () -> Unit, onEdit: () -> Unit, onArtist: () -> Unit) {
+fun SongRow(track: Track, playing: Boolean, onClick: () -> Unit, onPlayNext: () -> Unit, onEdit: () -> Unit, onArtist: () -> Unit, onHide: () -> Unit) {
     val c = MaterialTheme.colorScheme
     var menu by remember { mutableStateOf(false) }
-    GlassCard(Modifier.fillMaxWidth(), radius = 20.dp, tint = if (playing) c.primary.copy(alpha = 0.16f) else null) {
+    GlassCard(Modifier.fillMaxWidth(), radius = 24.dp, tint = if (playing) c.primary.copy(alpha = 0.16f) else null) {
         Row(
-            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 10.dp, top = 8.dp, bottom = 8.dp, end = 2.dp),
+            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Artwork(track.uri, 52.dp, Modifier.size(52.dp), RoundedCornerShape(14.dp))
-            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Artwork(track.uri, 56.dp, Modifier.size(56.dp), RoundedCornerShape(16.dp))
+            Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     track.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold,
                     color = if (playing) c.primary else c.onSurface,
@@ -62,6 +63,8 @@ fun SongRow(track: Track, playing: Boolean, onClick: () -> Unit, onPlayNext: () 
                         onClick = { menu = false; onPlayNext() })
                     DropdownMenuItem(text = { Text("Go to artist") }, leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.Person, null) },
                         onClick = { menu = false; onArtist() })
+                    DropdownMenuItem(text = { Text("Hide song") }, leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.VisibilityOff, null) },
+                        onClick = { menu = false; onHide() })
                     DropdownMenuItem(text = { Text("Edit info") }, leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.Edit, null) },
                         onClick = { menu = false; onEdit() })
                 }
@@ -73,12 +76,12 @@ fun SongRow(track: Track, playing: Boolean, onClick: () -> Unit, onPlayNext: () 
 @Composable
 fun AlbumCard(album: Album, onClick: () -> Unit) {
     val c = MaterialTheme.colorScheme
-    GlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
-        Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(8.dp)) {
+    GlassCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+        Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(10.dp)) {
             Artwork(album.tracks.first().uri, 180.dp, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(18.dp))
-            Text(album.name, Modifier.padding(start = 4.dp, top = 8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            Text(album.name, Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
             Text(
-                "${album.artist} · ${album.tracks.size}", Modifier.padding(start = 4.dp, bottom = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                "${album.artist} · ${Library.plural(album.tracks.size, "song")}", Modifier.padding(start = 4.dp, bottom = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant,
             )
         }
@@ -86,16 +89,16 @@ fun AlbumCard(album: Album, onClick: () -> Unit) {
 }
 
 @Composable
-fun ArtistRow(artist: Artist, onClick: () -> Unit) {
+fun ArtistRow(artist: Artist, artKey: String, onClick: () -> Unit) {
     val c = MaterialTheme.colorScheme
     val albums = artist.tracks.map { it.albumId }.distinct().size
-    GlassCard(Modifier.fillMaxWidth(), radius = 24.dp) {
-        Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Artwork(artist.tracks.first().uri, 56.dp, Modifier.size(56.dp), CircleShape)
+    GlassCard(Modifier.fillMaxWidth(), radius = 28.dp) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Artwork(artKey, 60.dp, Modifier.size(60.dp), CircleShape)
             Column(Modifier.padding(start = 14.dp)) {
                 Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${artist.tracks.size} songs · $albums albums", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant,
+                    "${Library.plural(artist.tracks.size, "song")} · ${Library.plural(albums, "album")}", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant,
                 )
             }
         }

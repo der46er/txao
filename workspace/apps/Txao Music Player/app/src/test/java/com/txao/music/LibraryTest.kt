@@ -43,4 +43,24 @@ class LibraryTest {
         assertEquals("Zed", albums[1].artist)
         assertEquals(listOf("Amy", "Zed"), Library.artists(tracks).map { it.name })
     }
+
+    @Test fun pluralisesCounts() {
+        assertEquals("1 song", Library.plural(1, "song"))
+        assertEquals("2 songs", Library.plural(2, "song"))
+        assertEquals("0 albums", Library.plural(0, "album"))
+    }
+
+    @Test fun sortsAlbumsByChosenMode() {
+        val albums = Library.albums(listOf(
+            Track(1, "a", "Zed", "Beta", 2, 1000, "u1", year = 2001),
+            Track(2, "b", "Amy", "Alpha", 1, 1000, "u2", year = 1999),
+            Track(3, "c", "Mid", "Gamma", 3, 1000, "u3", year = 2010),
+        ))
+        assertEquals(listOf("Alpha", "Beta", "Gamma"), Library.sortAlbums(albums, Library.SORT_NAME, emptyList()).map { it.name })
+        assertEquals(listOf("Alpha", "Gamma", "Beta"), Library.sortAlbums(albums, Library.SORT_ARTIST, emptyList()).map { it.name })
+        assertEquals(listOf("Gamma", "Beta", "Alpha"), Library.sortAlbums(albums, Library.SORT_YEAR, emptyList()).map { it.name })
+        // custom order wins; albums not in it go last by name
+        val custom = listOf(albums.first { it.name == "Gamma" }.key, albums.first { it.name == "Beta" }.key)
+        assertEquals(listOf("Gamma", "Beta", "Alpha"), Library.sortAlbums(albums, Library.SORT_CUSTOM, custom).map { it.name })
+    }
 }
