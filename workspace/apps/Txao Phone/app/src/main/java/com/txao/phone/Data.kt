@@ -6,14 +6,20 @@ import android.net.Uri
 import android.provider.BlockedNumberContract
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.provider.ContactsContract.CommonDataKinds.Phone as PhoneColumns
 
-data class Contact(val id: Long, val name: String, val number: String, val starred: Boolean) {
+data class Contact(val id: Long, val name: String, val number: String, val starred: Boolean, val photoUri: String? = null) {
     val lookupUri: Uri get() = ContactsContract.Contacts.getLookupUri(id, null) ?: Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, id.toString())
 }
 
 data class CallEntry(val id: Long, val number: String, val name: String?, val type: Int, val date: Long, val duration: Long) {
-    val missed get() = type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE
+    val missed get() = type == CallLog.Calls.MISSED_TYPE
+    val declined get() = type == CallLog.Calls.REJECTED_TYPE
+    val blocked get() = type == CallLog.Calls.BLOCKED_TYPE
     val outgoing get() = type == CallLog.Calls.OUTGOING_TYPE
+    val kind get() = when {
+        missed -> "Missed"; declined -> "Declined"; blocked -> "Blocked"; outgoing -> "Outgoing"; else -> "Incoming"
+    }
     val label get() = name?.takeIf { it.isNotBlank() } ?: PhoneUtil.pretty(number).ifEmpty { "Unknown" }
 }
 
@@ -26,11 +32,10 @@ data class CallGroup(val calls: List<CallEntry>) {
 object Data {
     fun contacts(ctx: Context): List<Contact> {
         val out = ArrayList<Contact>()
-        val p = ContactsContract.CommonDataKinds.Phone
-        val cols = arrayOf(p.CONTACT_ID, p.DISPLAY_NAME, p.NUMBER, p.STARRED)
+        val cols = arrayOf(PhoneColumns.CONTACT_ID, PhoneColumns.DISPLAY_NAME, PhoneColumns.NUMBER, PhoneColumns.STARRED, PhoneColumns.PHOTO_THUMBNAIL_URI)
         try {
-            ctx.contentResolver.query(p.CONTENT_URI, cols, null, null, "${p.DISPLAY_NAME} COLLATE NOCASE")?.use { c ->
-                while (c.moveToNext()) out += Contact(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getInt(3) == 1)
+            ctx.contentResolver.query(PhoneColumns.CONTENT_URI, cols, null, null, "${PhoneColumns.DISPLAY_NAME} COLLATE NOCASE")?.use { c ->
+                while (c.moveToNext()) out += Contact(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getInt(3) == 1, c.getString(4))
             }
         } catch (_: SecurityException) {
         }
@@ -77,6 +82,19 @@ object Data {
         calls.filter { it.outgoing && !PhoneUtil.normalize(it.number).let(exclude::contains) }
             .groupBy { PhoneUtil.key(it.number) }.values
             .sortedByDescending { it.size }.take(max).map { it.first() }
+
+    /** Photo thumbnail for a number, or null. */
+    fun lookupPhoto(ctx: Context, number: String): String? {
+        if (number.isEmpty()) return null
+        return try {
+            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+            ctx.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup.PHOTO_URI), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0) else null
+            }
+        } catch (_: SecurityException) {
+            null
+        }
+    }
 
     fun lookupName(ctx: Context, number: String): String? {
         if (number.isEmpty()) return null

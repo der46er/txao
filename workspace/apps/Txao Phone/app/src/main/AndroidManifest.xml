@@ -3,6 +3,8 @@
 
     <!-- Contacts: list and search contacts, show names in the call log and during calls. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Create, edit and delete contacts inside the app. -->
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <!-- Call log: show recent calls and clear them. -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
@@ -12,6 +14,9 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Lets the system treat this app as a full phone app when it is chosen as the default dialer. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
 
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
@@ -33,6 +38,10 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.CALL_BUTTON" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>

@@ -56,4 +56,46 @@ class PhoneUtilTest {
         val f = Data.frequent(listOf(out(1, "111111"), out(2, "222222"), out(3, "222222")), emptySet())
         assertEquals("222222", f.first().number)
     }
+
+    @Test fun countryFromInternationalPrefix() {
+        assertEquals("Austria", PhoneUtil.countryOf("+43 664 2423015"))
+        assertEquals("United States / Canada", PhoneUtil.countryOf("+1 555 0100"))
+        assertEquals("Portugal", PhoneUtil.countryOf("+351 21 000 0000"))
+        assertNull(PhoneUtil.countryOf("0664 2423015"))
+    }
+
+    @Test fun birthdayLabels() {
+        assertEquals("14 Mar 1990", PhoneUtil.birthdayLabel("1990-03-14"))
+        assertEquals("5 Dec", PhoneUtil.birthdayLabel("--12-05"))
+        assertEquals("sometime", PhoneUtil.birthdayLabel("sometime"))
+    }
+}
+
+class CallEntryKindTest {
+    private fun e(type: Int) = CallEntry(1, "1", null, type, 0, 0)
+
+    @org.junit.Test fun declinedCallsAreNotMissed() {
+        org.junit.Assert.assertEquals("Declined", e(android.provider.CallLog.Calls.REJECTED_TYPE).kind)
+        org.junit.Assert.assertFalse(e(android.provider.CallLog.Calls.REJECTED_TYPE).missed)
+        org.junit.Assert.assertEquals("Missed", e(android.provider.CallLog.Calls.MISSED_TYPE).kind)
+    }
+}
+
+class ImPlatformTest {
+    @org.junit.Test fun linksOpenTheRightChat() {
+        org.junit.Assert.assertEquals("https://wa.me/436642423015", ImPlatform.WhatsApp.link("+43 664 2423015"))
+        org.junit.Assert.assertEquals("https://t.me/martin", ImPlatform.Telegram.link("@martin"))
+        org.junit.Assert.assertEquals("tg://resolve?phone=436642423015", ImPlatform.Telegram.link("+43 664 2423015"))
+        org.junit.Assert.assertEquals("https://signal.me/#u/martin.42", ImPlatform.Signal.link("martin.42"))
+        org.junit.Assert.assertEquals("https://instagram.com/_u/martin", ImPlatform.Instagram.link("@martin"))
+        org.junit.Assert.assertNull(ImPlatform.Discord.link("martin#1234"))
+        org.junit.Assert.assertNull(ImPlatform.Other.link("anything"))
+        org.junit.Assert.assertNull(ImPlatform.X.link("  "))
+    }
+
+    @org.junit.Test fun namesMapBackToPlatforms() {
+        org.junit.Assert.assertEquals(ImPlatform.Signal, ImPlatform.fromName("signal"))
+        org.junit.Assert.assertEquals(ImPlatform.Other, ImPlatform.fromName("Matrix"))
+        org.junit.Assert.assertEquals("Matrix", ImEntry("Matrix", "@a:b").displayPlatform)
+    }
 }

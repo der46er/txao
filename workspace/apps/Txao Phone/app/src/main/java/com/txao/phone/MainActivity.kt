@@ -48,14 +48,15 @@ class MainActivity : ComponentActivity() {
 
 private val PERMS = arrayOf(
     Manifest.permission.READ_CONTACTS, Manifest.permission.READ_CALL_LOG,
-    Manifest.permission.WRITE_CALL_LOG, Manifest.permission.CALL_PHONE,
+    Manifest.permission.WRITE_CALL_LOG, Manifest.permission.WRITE_CONTACTS, Manifest.permission.CALL_PHONE,
 )
 
 private fun hasAll(ctx: Context) = PERMS.all { ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED }
 
 private sealed interface Screen {
     data object Keypad : Screen
-    data class Detail(val number: String, val title: String) : Screen
+    data class Detail(val number: String, val title: String, val contactId: Long? = null) : Screen
+    data class Edit(val details: ContactDetails) : Screen
     data object Blocked : Screen
 }
 
@@ -67,9 +68,24 @@ private fun App(initialNumber: String) {
     val ctx = LocalContext.current
     var granted by remember { mutableStateOf(hasAll(ctx)) }
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted = hasAll(ctx) }
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
-    val rm = ctx.getSystemService(RoleManager::class.java)
-    var isDefault by remember { mutableStateOf(rm.isRoleHeld(RoleManager.ROLE_DIALER)) }
+    var isDefault by remember { mutableStateOf(DefaultDialer.isHeld(ctx)) }
+    // Default-phone-app request with fallbacks: role dialog, then the telecom dialog, then the settings page.
+    var attempt by remember { mutableIntStateOf(0) }
+    var showHelp by remember { mutableStateOf(false) }
+    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        isDefault = DefaultDialer.isHeld(ctx)
+        if (!isDefault) showHelp = true
+    }
+    val tryRequest: (Int) -> Unit = { from ->
+        val intents = DefaultDialer.requestIntents(ctx)
+        var i = from
+        while (i < intents.size) {
+            try { attempt = i; roleLauncher.launch(intents[i]); break } catch (_: Exception) { i++ }
+        }
+        if (i >= intents.size) showHelp = true
+    }
+    val requestDefault = { tryRequest(0) }
+    val prefs = remember { ctx.getSharedPreferences("txao_phone", Context.MODE_PRIVATE) }
 
     var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
     var recents by remember { mutableStateOf<List<CallEntry>>(emptyList()) }
@@ -77,11 +93,18 @@ private fun App(initialNumber: String) {
         if (!hasAll(ctx)) return
         contacts = Data.contacts(ctx)
         recents = Data.recents(ctx)
-        isDefault = rm.isRoleHeld(RoleManager.ROLE_DIALER)
+        isDefault = DefaultDialer.isHeld(ctx)
     }
     LaunchedEffect(granted) { reload() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload() }
     LaunchedEffect(Unit) { if (!granted) permLauncher.launch(PERMS + Manifest.permission.POST_NOTIFICATIONS) }
+    // First launch: ask once to become the default phone app, so calls use our own call screen.
+    LaunchedEffect(granted) {
+        if (granted && !isDefault && !prefs.getBoolean("asked_role", false)) {
+            prefs.edit().putBoolean("asked_role", true).apply()
+            requestDefault()
+        }
+    }
 
     var tab by remember { mutableIntStateOf(1) }
     var number by remember(initialNumber) { mutableStateOf(initialNumber) }
@@ -95,12 +118,27 @@ private fun App(initialNumber: String) {
         if (screen != null) screen = null else search.edit { replace(0, length, "") }
     }
 
-    val call: (String) -> Unit = { placeCall(ctx, it) }
-    val open: (String, String) -> Unit = { n, t -> screen = Screen.Detail(n, t) }
+    // Placing a call never falls back to the system dialer: ask for the permission instead, then dial.
+    var pendingCall by remember { mutableStateOf<String?>(null) }
+    val callPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        val n = pendingCall; pendingCall = null
+        if (ok && n != null) placeCall(ctx, n)
+    }
+    val call: (String) -> Unit = { n -> if (!placeCall(ctx, n)) { pendingCall = n; callPermLauncher.launch(Manifest.permission.CALL_PHONE) } }
+    val open: (String, String) -> Unit = { n, t -> screen = Screen.Detail(n, t, contacts.firstOrNull { PhoneUtil.sameNumber(it.number, n) }?.id) }
+    val photos = remember(contacts) { contacts.filter { it.photoUri != null }.associate { PhoneUtil.key(it.number) to it.photoUri!! } }
+    val resolver: (String) -> String? = remember(photos) { { n -> photos[PhoneUtil.key(n)] } }
+    val newContact: (String) -> Unit = { n -> screen = Screen.Edit(ContactDetails(phones = if (n.isEmpty()) emptyList() else listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }
 
+    CompositionLocalProvider(LocalPhotoResolver provides resolver) {
     when (val s = screen) {
-        Screen.Keypad -> KeypadScreen(number, contacts, { number = it }, { call(number) }, { screen = null })
-        is Screen.Detail -> DetailScreen(s.number, s.title, { screen = null }, call, { reload() })
+        Screen.Keypad -> KeypadScreen(number, contacts, { number = it }, { call(number) }, { screen = null }, newContact)
+        is Screen.Detail -> ContactPage(s.contactId, s.number, s.title, { screen = null }, call, { d, n -> screen = Screen.Edit(d ?: ContactDetails(phones = listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }, { reload() })
+        is Screen.Edit -> EditorScreen(
+            s.details, { screen = null },
+            { id -> reload(); screen = if (id != null) Screen.Detail("", s.details.name, id) else null },
+            { reload(); screen = null },
+        )
         Screen.Blocked -> BlockedScreen { screen = null }
         null -> Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -119,6 +157,12 @@ private fun App(initialNumber: String) {
             },
         ) { pad ->
             Column(Modifier.padding(pad).statusBarsPadding().fillMaxSize()) {
+                if (!isDefault && granted) {
+                    Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth().glass(20.dp).padding(start = 16.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Calls still use the system call screen. Tap Set, choose Txao Phone as your phone app, and confirm.", Modifier.weight(1f), fontSize = 13.sp)
+                        TextButton(requestDefault) { Text("Set") }
+                    }
+                }
                 // Search pill with overflow menu, like the stock dialer's top bar.
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().height(52.dp).glass(26.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Search, null, Modifier.padding(start = 16.dp), tint = Muted)
@@ -135,8 +179,8 @@ private fun App(initialNumber: String) {
                         DropdownMenu(menu, { menu = false }) {
                             DropdownMenuItem({ Text("Clear call history") }, { menu = false; confirmClear = true })
                             DropdownMenuItem({ Text("Blocked numbers") }, { menu = false; screen = Screen.Blocked })
-                            if (!isDefault && rm.isRoleAvailable(RoleManager.ROLE_DIALER)) {
-                                DropdownMenuItem({ Text("Set as default phone app") }, { menu = false; roleLauncher.launch(rm.createRequestRoleIntent(RoleManager.ROLE_DIALER)) })
+                            if (!isDefault) {
+                                DropdownMenuItem({ Text("Set as default phone app") }, { menu = false; requestDefault() })
                             }
                         }
                     }
@@ -150,13 +194,35 @@ private fun App(initialNumber: String) {
                     query.isNotEmpty() -> SearchResults(query, contacts, recents, call, open)
                     tab == 0 -> FavoritesScreen(contacts, recents, call, open)
                     tab == 1 -> RecentsScreen(recents, call, open)
-                    tab == 2 -> ContactsScreen(contacts, open)
+                    tab == 2 -> ContactsScreen(contacts, open) { newContact("") }
                     else -> VoicemailScreen()
                 }
             }
         }
     }
 
+    }
+    if (showHelp && !isDefault) {
+        val methods = DefaultDialer.requestIntents(ctx).size
+        AlertDialog(
+            onDismissRequest = { showHelp = false },
+            title = { Text("Set Txao Phone as default") },
+            text = {
+                Text(
+                    "Android did not switch your phone app yet. Open Settings > Apps > Default apps > Phone app and pick Txao Phone. " +
+                        "On Xiaomi phones also allow \"Display pop-up windows while running in the background\" and \"Show on lock screen\" in the app's permissions, so incoming calls can appear.",
+                )
+            },
+            confirmButton = { TextButton({ showHelp = false; try { ctx.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) } catch (_: Exception) {} }) { Text("Open settings") } },
+            dismissButton = {
+                Row {
+                    if (attempt + 1 < methods) TextButton({ showHelp = false; tryRequest(attempt + 1) }) { Text("Try another way") }
+                    TextButton({ showHelp = false }) { Text("Close") }
+                }
+            },
+        )
+    }
+    if (granted) WhatsNewDialog()
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
