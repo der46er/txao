@@ -29,6 +29,10 @@ object WhatsNew {
 
     /** Release notes by versionCode. Add an entry per release; versions without one show nothing. */
     val notes: Map<Int, List<String>> = mapOf(
+        9 to listOf(
+            "Custom background image per contact, shown on their page and on the call screen.",
+            "New Settings screen: sync new contacts with your Google account, edit quick replies.",
+        ),
         8 to listOf(
             "More reliable \"default phone app\" setup: if Android ignores the first request, Txao Phone tries other ways and tells you what to tap.",
         ),

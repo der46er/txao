@@ -31,6 +31,7 @@ data class ContactDetails(
     val notes: String = "",
     val starred: Boolean = false,
     val photoUri: String? = null,
+    val background: String? = null,
 )
 
 /** Result of editing: [photo] is new JPEG bytes, [removePhoto] clears the stored one. */
@@ -67,7 +68,7 @@ object ContactsRepo {
                 ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactId),
                 arrayOf(ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.STARRED, ContactsContract.Contacts.PHOTO_URI), null, null, null,
             )?.use {
-                if (it.moveToFirst()) { found = true; d = d.copy(name = it.getString(0).orEmpty(), starred = it.getInt(1) == 1, photoUri = it.getString(2)) }
+                if (it.moveToFirst()) { found = true; d = d.copy(name = it.getString(0).orEmpty(), starred = it.getInt(1) == 1, photoUri = it.getString(2), background = Backgrounds.uriForContact(ctx, contactId)) }
             }
             if (!found) return null
             val phones = ArrayList<Labeled>(); val emails = ArrayList<Labeled>(); val ims = ArrayList<ImEntry>()
@@ -107,6 +108,7 @@ object ContactsRepo {
     }
 
     fun delete(ctx: Context, contactId: Long): Boolean = try {
+        Backgrounds.remove(ctx, contactId)
         ctx.contentResolver.delete(ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactId), null, null) > 0
     } catch (_: Exception) { false }
 
@@ -128,7 +130,8 @@ object ContactsRepo {
         val creating = d.rawId == 0L
         if (creating) {
             ops += ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null).withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null).build()
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, AppSettings.activeGoogleAccount(ctx)?.let { "com.google" })
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, AppSettings.activeGoogleAccount(ctx)).build()
         } else {
             ops += ContentProviderOperation.newDelete(D.CONTENT_URI)
                 .withSelection("${D.RAW_CONTACT_ID}=? AND ${D.MIMETYPE} IN (${MANAGED.joinToString(",") { "?" }})", arrayOf(d.rawId.toString()) + MANAGED).build()

@@ -8,7 +8,10 @@ import android.telecom.CallAudioState
 import android.telecom.VideoProfile
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -63,12 +66,20 @@ private fun CallScreen(onDone: () -> Unit) {
     val number = CallManager.number(call)
     val name = remember(number) { Data.lookupName(ctx, number) }
     val photo = remember(number) { Data.lookupPhoto(ctx, number) }
+    val bgUri = remember(number) { Backgrounds.uriForNumber(ctx, number) }
+    val bg = rememberPhoto(bgUri, 1280)
     val state = call.state
     val speaker = audio?.route == CallAudioState.ROUTE_SPEAKER
     val ringing = state == Call.STATE_RINGING
     val place = remember(number) { PhoneUtil.countryOf(number) }
     val canMerge = other != null && call.details?.can(Call.Details.CAPABILITY_MERGE_CONFERENCE) == true
 
+    Box(Modifier.fillMaxSize()) {
+    if (bg != null) {
+        // Contact's own background image, darkened so text and buttons stay readable.
+        Image(bg, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x80000000), Color(0x66000000), Color(0xCC000000)))))
+    }
     Column(Modifier.fillMaxSize().systemBarsPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (other != null) {
             Row(Modifier.fillMaxWidth().glass(20.dp).clickable { other.unhold() }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -138,6 +149,7 @@ private fun CallScreen(onDone: () -> Unit) {
             }
         }
         Spacer(Modifier.height(24.dp))
+    }
     }
 }
 
