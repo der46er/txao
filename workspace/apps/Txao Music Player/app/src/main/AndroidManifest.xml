@@ -13,6 +13,8 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!-- Optional "All files access", requested only from the Edit info screen: saves song info straight into the files without Android's confirmation on every edit. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <!-- Media3 holds a partial wake lock so playback is not cut off when the screen is off. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Show the playback controls notification. -->

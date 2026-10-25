@@ -100,6 +100,8 @@ fun MusicApp(
     prefs: TxaoPrefs,
     onRequestPermission: () -> Unit,
     onRequestWrite: (List<Uri>, () -> Unit) -> Unit,
+    allFilesAccess: Boolean,
+    onGrantAllFiles: () -> Unit,
 ) {
     val stack = remember { mutableStateListOf<Route>(Route.Home) }
     val route = stack.last()
@@ -131,7 +133,7 @@ fun MusicApp(
                 is Route.Detail -> DetailScreen(vm, r, ::pop) { push(it) }
                 Route.Player -> PlayerScreen(vm, ::pop)
                 Route.Settings -> SettingsScreen(prefs, ::pop)
-                is Route.Edit -> EditScreen(vm, r.tracks, ::pop, onRequestWrite)
+                is Route.Edit -> EditScreen(vm, r.tracks, ::pop, onRequestWrite, allFilesAccess, onGrantAllFiles)
             }
         }
 

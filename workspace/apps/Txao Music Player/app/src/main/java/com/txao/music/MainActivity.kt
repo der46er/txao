@@ -4,7 +4,12 @@ import android.Manifest
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.os.Build
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import android.provider.MediaStore
 import android.net.Uri
 import androidx.activity.ComponentActivity
@@ -25,6 +30,7 @@ class MainActivity : ComponentActivity() {
     private val vm: PlayerViewModel by viewModels()
     private lateinit var prefs: TxaoPrefs
     private var afterGrant: (() -> Unit)? = null
+    private var allFiles by mutableStateOf(false)
 
     private val grantLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         if (r.resultCode == RESULT_OK) afterGrant?.invoke()
@@ -39,12 +45,24 @@ class MainActivity : ComponentActivity() {
     private fun requestWrite(uris: List<Uri>, then: () -> Unit) {
         afterGrant = then
         when {
+            MediaEditor.hasAllFilesAccess() -> { afterGrant = null; then() }
             Build.VERSION.SDK_INT >= 30 ->
                 grantLauncher.launch(IntentSenderRequest.Builder(MediaStore.createWriteRequest(contentResolver, uris).intentSender).build())
             Build.VERSION.SDK_INT >= 29 -> { afterGrant = null; then() } // a per-file prompt appears if the write is refused
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED -> { afterGrant = null; then() }
             else -> legacyWrite.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        allFiles = MediaEditor.hasAllFilesAccess()
+    }
+
+    private fun openAllFilesSettings() {
+        val pkg = Uri.parse("package:$packageName")
+        runCatching { startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, pkg)) }
+            .onFailure { startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,7 +89,8 @@ class MainActivity : ComponentActivity() {
                     val alpha = remember { Animatable(0f) }
                     LaunchedEffect(Unit) { alpha.animateTo(1f, tween(TxaoMotion.AppearMs)) }
                     Box(Modifier.graphicsLayer { this.alpha = alpha.value }) {
-                        MusicApp(vm, prefs, onRequestPermission = { askRead.launch(arrayOf(audioPermission)) }, onRequestWrite = ::requestWrite)
+                        MusicApp(vm, prefs, onRequestPermission = { askRead.launch(arrayOf(audioPermission)) }, onRequestWrite = ::requestWrite,
+                            allFilesAccess = allFiles, onGrantAllFiles = ::openAllFilesSettings)
                     }
                 }
             }
