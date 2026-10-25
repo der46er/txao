@@ -189,6 +189,7 @@ fun SearchResults(query: String, contacts: List<Contact>, recents: List<CallEntr
 @Composable
 fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> Unit, onCall: () -> Unit, onClose: () -> Unit, onAddContact: (String) -> Unit) {
     val ctx = LocalContext.current
+    val tones = rememberKeyTones()
     val matches = remember(number, contacts) { if (number.isEmpty()) emptyList() else contacts.filter { PhoneUtil.matches(number, it.name, it.number) }.take(3) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth()) { IconButton(onClose) { Icon(Icons.Filled.KeyboardArrowDown, "Close keypad") } }
@@ -212,7 +213,7 @@ fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 row.forEach { (k, sub) ->
                     Column(
-                        Modifier.padding(vertical = 6.dp).size(76.dp).glass(38.dp).clickable { onChange(number + k) },
+                        Modifier.padding(vertical = 6.dp).size(76.dp).glass(38.dp).clickable { tones.play(k[0]); onChange(number + k) },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                     ) {
                         Text(k, fontSize = 26.sp, fontWeight = FontWeight.Medium)

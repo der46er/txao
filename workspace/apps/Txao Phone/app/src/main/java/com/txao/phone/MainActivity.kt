@@ -188,6 +188,7 @@ private fun App(initialNumber: String) {
     }
 
     }
+    if (granted) WhatsNewDialog()
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },

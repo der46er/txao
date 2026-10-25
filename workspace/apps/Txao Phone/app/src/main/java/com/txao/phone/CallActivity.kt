@@ -167,11 +167,12 @@ private fun Toggle(icon: ImageVector, label: String, on: Boolean, onClick: () ->
 
 @Composable
 private fun DtmfPad(onKey: (Char) -> Unit) {
+    val tones = rememberKeyTones()
     val rows = listOf("123", "456", "789", "*0#")
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         for (r in rows) Row {
             for (k in r) {
-                Box(Modifier.padding(6.dp).size(64.dp).clip(CircleShape).background(Color(0x1FFFFFFF)).clickable { onKey(k) }, contentAlignment = Alignment.Center) {
+                Box(Modifier.padding(6.dp).size(64.dp).clip(CircleShape).background(Color(0x1FFFFFFF)).clickable { tones.play(k); onKey(k) }, contentAlignment = Alignment.Center) {
                     Text(k.toString(), fontSize = 24.sp)
                 }
             }
