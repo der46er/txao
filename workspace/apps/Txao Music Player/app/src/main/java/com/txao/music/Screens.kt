@@ -75,7 +75,7 @@ fun SettingsScreen(prefs: TxaoPrefs, back: () -> Unit) {
 }
 
 @Composable
-fun EditScreen(vm: PlayerViewModel, tracks: List<Track>, back: () -> Unit, onRequestWrite: (List<Uri>, () -> Unit) -> Unit) {
+fun EditScreen(vm: PlayerViewModel, tracks: List<Track>, back: () -> Unit, onRequestWrite: (List<Uri>, () -> Unit) -> Unit, allFilesAccess: Boolean, onGrantAllFiles: () -> Unit) {
     val c = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     val single = tracks.size == 1
@@ -148,6 +148,14 @@ fun EditScreen(vm: PlayerViewModel, tracks: List<Track>, back: () -> Unit, onReq
                 if (single) Field("Track no.", trackNo, Modifier.weight(1f), number = true) { trackNo = it.filter(Char::isDigit).take(3) }
             }
             Field("Genre", genre) { genre = it }
+            if (!allFilesAccess && android.os.Build.VERSION.SDK_INT >= 30) {
+                GlassCard(Modifier.fillMaxWidth(), radius = 22.dp) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Android asks for confirmation every time a song file is changed. Allow \"All files access\" once to skip that. It's only used to save your edits, and nothing leaves your device.", style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant)
+                        TxaoButton("Allow once", primary = false, onClick = onGrantAllFiles)
+                    }
+                }
+            }
             message?.let { Text(it, color = if (it.startsWith("Saved")) c.primary else c.error) }
             Text(
                 "MP3 files get the new tags written into the file. For other formats the change is saved in your library only and may revert if the library is rescanned.",
