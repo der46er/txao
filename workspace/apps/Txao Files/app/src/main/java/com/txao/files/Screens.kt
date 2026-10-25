@@ -9,6 +9,13 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -136,9 +143,7 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
     val layout = remember(path, layoutTick) { prefs.layoutFor(path, roots) }
     val selecting = selected.isNotEmpty()
 
-    val entries by produceState(emptyList<Entry>(), path, refresh, showHidden, sortField, sortAsc) {
-        value = withContext(Dispatchers.IO) { listDir(dir, showHidden, sortField, sortAsc) }
-    }
+    var entries by remember { mutableStateOf(emptyList<Entry>()) }
     val results by produceState(emptyList<Entry>(), path, query, searching, showHidden, refresh) {
         value = if (searching && query.isNotBlank()) withContext(Dispatchers.IO) { searchIn(dir, query, showHidden) } else emptyList()
     }
@@ -206,35 +211,46 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
                         }
                     }
                     Crumbs(vols, vol, path, onOpen = { path = it; closeSearch(); selected = emptySet() })
-                    val showing = if (searching && query.isNotBlank()) results else entries
-                    if (showing.isEmpty()) {
-                        Box(Modifier.fillMaxSize().padding(bottom = 80.dp), contentAlignment = Alignment.Center) {
-                            Text(
-                                if (searching && query.isNotBlank()) "No matches" else "This folder is empty",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else if (layout == FolderLayout.Grid && !(searching && query.isNotBlank())) {
-                        LazyVerticalGrid(
-                            GridCells.Fixed(4),
-                            Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-                        ) {
-                            items(showing, key = { it.file.path }) { e ->
-                                GridTile(e, e.file.path in selected,
-                                    onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
-                                    onLong = { selected = toggle(selected, e) })
+                    val searchActive = searching && query.isNotBlank()
+                    if (searchActive) {
+                        if (results.isEmpty()) {
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {
+                                Text("No matches", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            item { Spacer(Modifier.height(100.dp)) }
+                        } else {
+                            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 6.dp)) {
+                                items(results, key = { it.file.path }) { e ->
+                                    ListRow(e, e.file.path in selected, subtitleParent = true,
+                                        onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
+                                        onLong = { selected = toggle(selected, e) })
+                                }
+                                item { Spacer(Modifier.height(100.dp)) }
+                            }
                         }
                     } else {
-                        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 6.dp)) {
-                            items(showing, key = { it.file.path }) { e ->
-                                ListRow(e, e.file.path in selected, subtitleParent = searching && query.isNotBlank(),
-                                    onClick = { if (selecting) selected = toggle(selected, e) else open(e) },
-                                    onLong = { selected = toggle(selected, e) })
-                            }
-                            item { Spacer(Modifier.height(100.dp)) }
+                        // Each (folder, layout) pair is its own screen with its own state, so moving
+                        // between a grid folder and a list folder never mixes their items.
+                        AnimatedContent(
+                            targetState = path to layout,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            transitionSpec = {
+                                if (targetState.first != initialState.first) {
+                                    val deeper = targetState.first.length > initialState.first.length
+                                    (slideInHorizontally(tween(280)) { if (deeper) it / 6 else -it / 6 } + fadeIn(tween(260))) togetherWith
+                                        (slideOutHorizontally(tween(200)) { if (deeper) -it / 6 else it / 6 } + fadeOut(tween(160)))
+                                } else {
+                                    fadeIn(tween(260)) togetherWith fadeOut(tween(160))
+                                }
+                            },
+                            label = "folder",
+                        ) { (p, l) ->
+                            FolderContent(
+                                dir = File(p), layout = l, refresh = refresh, showHidden = showHidden,
+                                sortField = sortField, sortAsc = sortAsc, selected = selected,
+                                onEntries = { if (p == path) entries = it },
+                                onClick = { e -> if (selecting) selected = toggle(selected, e) else open(e) },
+                                onLong = { e -> selected = toggle(selected, e) },
+                            )
                         }
                     }
                 }
@@ -337,6 +353,37 @@ private fun Browser(prefs: Prefs, chooseBackground: () -> Unit, clearBackground:
             dismissButton = { TextButton({ dialog = Dialog.Delete(listOf(d.file)) }) { Text("Delete", color = Color(0xFFFFB4AB)) } },
         )
         null -> {}
+    }
+}
+
+@Composable
+private fun FolderContent(
+    dir: File, layout: FolderLayout, refresh: Int, showHidden: Boolean, sortField: SortField, sortAsc: Boolean,
+    selected: Set<String>, onEntries: (List<Entry>) -> Unit, onClick: (Entry) -> Unit, onLong: (Entry) -> Unit,
+) {
+    val loaded by produceState<List<Entry>?>(null, dir.path, refresh, showHidden, sortField, sortAsc) {
+        value = withContext(Dispatchers.IO) { listDir(dir, showHidden, sortField, sortAsc) }
+    }
+    val list = loaded ?: return
+    LaunchedEffect(list) { onEntries(list) }
+    if (list.isEmpty()) {
+        Box(Modifier.fillMaxSize().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {
+            Text("This folder is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else if (layout == FolderLayout.Grid) {
+        LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
+            items(list, key = { it.file.path }) { e ->
+                GridTile(e, e.file.path in selected, Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
+            }
+            item { Spacer(Modifier.height(100.dp)) }
+        }
+    } else {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+            items(list, key = { it.file.path }) { e ->
+                ListRow(e, e.file.path in selected, subtitleParent = false, modifier = Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
+            }
+            item { Spacer(Modifier.height(100.dp)) }
+        }
     }
 }
 
@@ -513,23 +560,27 @@ private fun Modifier.selectedBg(selected: Boolean, radius: Int = 16): Modifier =
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun GridTile(e: Entry, selected: Boolean, onClick: () -> Unit, onLong: () -> Unit) {
-    Column(
-        Modifier.padding(2.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLong).padding(vertical = 8.dp, horizontal = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        FileGlyph(e.file, e.isDir, 58.dp)
-        Spacer(Modifier.height(4.dp))
-        Text(e.name, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+private fun GridTile(e: Entry, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit, onLong: () -> Unit) {
+    // The glyph fills most of the column, like Fossify's big flat folders.
+    BoxWithConstraints(modifier.padding(1.dp)) {
+        val glyph = maxWidth * 0.84f
+        Column(
+            Modifier.fillMaxWidth().selectedBg(selected).clip(RoundedCornerShape(14.dp))
+                .combinedClickable(onClick = onClick, onLongClick = onLong).padding(vertical = 6.dp, horizontal = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            FileGlyph(e.file, e.isDir, glyph)
+            Spacer(Modifier.height(2.dp))
+            Text(e.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ListRow(e: Entry, selected: Boolean, subtitleParent: Boolean, onClick: () -> Unit, onLong: () -> Unit) {
+private fun ListRow(e: Entry, selected: Boolean, subtitleParent: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit, onLong: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 8.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
+        modifier.fillMaxWidth().padding(horizontal = 8.dp).selectedBg(selected).clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLong).padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
