@@ -1,9 +1,8 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <group android:scaleX="0.7" android:scaleY="0.7" android:pivotX="54" android:pivotY="54">
-        <path android:pathData="M36,22h36a14,14 0 0,1 14,14v24a14,14 0 0,1 -14,14h-22l-14,14v-14h0a14,14 0 0,1 -14,-14v-24a14,14 0 0,1 14,-14z"
-            android:strokeWidth="3" android:strokeColor="#FFFFFFFF" android:fillColor="#00000000" />
-        <path android:pathData="M36,42h36M36,54h22" android:strokeWidth="4.5" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+    <group android:scaleX="0.9" android:scaleY="0.9" android:pivotX="54" android:pivotY="54">
+    <!-- Themed-icon version: only alpha matters, the system tints it. -->
+    <path android:pathData="M38,22H70A14,14 0 0 1 84,36V58A14,14 0 0 1 70,72H44L24,86V36A14,14 0 0 1 38,22zM39.25,34H68.75A3.25,3.25 0 0 1 72,37.25V37.25A3.25,3.25 0 0 1 68.75,40.5H39.25A3.25,3.25 0 0 1 36,37.25V37.25A3.25,3.25 0 0 1 39.25,34zM39.25,47H54.75A3.25,3.25 0 0 1 58,50.25V50.25A3.25,3.25 0 0 1 54.75,53.5H39.25A3.25,3.25 0 0 1 36,50.25V50.25A3.25,3.25 0 0 1 39.25,47z" android:fillType="evenOdd" android:fillColor="#FFFFFFFF" />
     </group>
 </vector>

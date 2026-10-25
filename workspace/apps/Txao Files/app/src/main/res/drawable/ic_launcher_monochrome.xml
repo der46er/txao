@@ -2,7 +2,6 @@
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
     <!-- Themed-icon version: only alpha matters, the system tints it. -->
-    <path android:pathData="M30,66V40a5,5 0 0 1 5,-5h13l6,7h19a5,5 0 0 1 5,5v19z"
-        android:fillColor="#00000000" android:strokeWidth="3" android:strokeColor="#FFFFFFFF" android:strokeLineJoin="round" />
-    <path android:pathData="M30,72l5.5,-24h43l-5.5,24z" android:fillColor="#FFFFFFFF" />
+    <path android:pathData="M30,28H46L52,35H78A6,6 0 0 1 84,41V72A6,6 0 0 1 78,78H30A6,6 0 0 1 24,72V34A6,6 0 0 1 30,28z" android:fillColor="#00000000" android:strokeWidth="3.4" android:strokeColor="#FFFFFFFF" android:strokeLineJoin="round" />
+    <path android:pathData="M30,46H78A6,6 0 0 1 84,52V72A6,6 0 0 1 78,78H30A6,6 0 0 1 24,72V52A6,6 0 0 1 30,46z" android:fillColor="#FFFFFFFF" />
 </vector>
