@@ -101,8 +101,8 @@ fun NewChatScreen(vm: SmsViewModel, draft: String, modifier: Modifier, onBack: (
                 }
                 items(group, key = { it.name + it.number }) { c ->
                     Row(Modifier.fillMaxWidth().clickable { onPick(c.number) }.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(c.name, 44)
-                        Column(Modifier.padding(start = 16.dp)) {
+                        Avatar(c.name, 44, address = c.number)
+                        Column(Modifier.padding(start = 14.dp)) {
                             Text(c.name, fontSize = 16.sp)
                             Text(c.number, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -116,8 +116,9 @@ fun NewChatScreen(vm: SmsViewModel, draft: String, modifier: Modifier, onBack: (
 // ---------- search ----------
 
 @Composable
-fun SearchScreen(vm: SmsViewModel, modifier: Modifier, onBack: () -> Unit, onOpen: (Msg) -> Unit) {
+fun SearchScreen(vm: SmsViewModel, modifier: Modifier, onBack: () -> Unit, onOpen: (Msg) -> Unit, onOpenChat: (Conversation) -> Unit) {
     val results by vm.results.collectAsState()
+    val conversations by vm.conversations.collectAsState()
     val context = LocalContext.current
     var q by remember { mutableStateOf("") }
     LaunchedEffect(q) { vm.search(q) }
@@ -127,21 +128,39 @@ fun SearchScreen(vm: SmsViewModel, modifier: Modifier, onBack: () -> Unit, onOpe
             q, { q = it }, Modifier.fillMaxWidth().padding(horizontal = 12.dp).glass(28.dp, androidx.compose.ui.graphics.Color(0x1FFFFFFF)),
             placeholder = { Text("Search conversations") }, singleLine = true, colors = fieldColors(), leadingIcon = { Icon(Icons.Default.Search, null) },
         )
-        if (q.trim().length >= 2 && results.isEmpty()) EmptyState("No results")
+        // Chats whose contact name or number matches, then single messages whose text matches.
+        val chats = remember(q, conversations) {
+            val t = q.trim()
+            val digits = t.filter { it.isDigit() }
+            if (t.length < 2) emptyList()
+            else conversations.filter { it.title.contains(t, ignoreCase = true) || (digits.length >= 3 && it.address.filter { c -> c.isDigit() }.contains(digits)) }.take(10)
+        }
+        if (q.trim().length >= 2 && results.isEmpty() && chats.isEmpty()) EmptyState("No results")
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-            items(results, key = { it.id }) { m -> MessageRow(vm, m, listTime(context, m.date)) { onOpen(m) } }
+            if (chats.isNotEmpty()) item("hc") { Text("Conversations", Modifier.padding(horizontal = 20.dp, vertical = 6.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Lavender) }
+            items(chats, key = { "c${it.threadId}" }) { c ->
+                Row(Modifier.fillMaxWidth().clickable { onOpenChat(c) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(c.title, 44, address = c.address)
+                    Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                        Text(c.title, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (c.title != c.address) Text(c.address, fontSize = 13.sp, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            if (results.isNotEmpty()) item("hm") { Text("Messages", Modifier.padding(horizontal = 20.dp, vertical = 6.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Lavender) }
+            items(results, key = { it.id }) { m -> MessageRow(m, listTime(context, m.date)) { onOpen(m) } }
         }
     }
 }
 
 @Composable
-private fun MessageRow(vm: SmsViewModel, m: Msg, time: String, onClick: () -> Unit) {
-    val name = vm.repo.displayName(m.address) ?: m.address
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Avatar(name, 44)
-        Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+private fun MessageRow(m: Msg, time: String, onClick: () -> Unit) {
+    val name = rememberContactInfo(m.address)?.name ?: m.address
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Avatar(name, 44, address = m.address)
+        Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
             Text(name, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(m.body, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(m.preview, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(time, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -159,7 +178,7 @@ fun StarredScreen(vm: SmsViewModel, modifier: Modifier, onBack: () -> Unit, onOp
         Header("Starred", onBack)
         if (items.isEmpty()) EmptyState("Long-press a message and tap the star to keep it here")
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-            items(items, key = { it.id }) { m -> MessageRow(vm, m, listTime(context, m.date)) { onOpen(m) } }
+            items(items, key = { it.id }) { m -> MessageRow(m, listTime(context, m.date)) { onOpen(m) } }
         }
     }
 }
@@ -180,8 +199,8 @@ fun BlockedScreen(vm: SmsViewModel, modifier: Modifier, onBack: () -> Unit) {
         LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
             items(blocked, key = { it }) { n ->
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(vm.repo.displayName(n) ?: n, 44)
-                    Text(vm.repo.displayName(n) ?: n, Modifier.weight(1f).padding(horizontal = 16.dp))
+                    Avatar(rememberContactInfo(n)?.name ?: n, 44, address = n)
+                    Text(rememberContactInfo(n)?.name ?: n, Modifier.weight(1f).padding(horizontal = 14.dp))
                     TextButton(onClick = { vm.unblock(n) }) { Text("Unblock") }
                 }
             }
@@ -239,7 +258,7 @@ fun SettingsScreen(vm: SmsViewModel, modifier: Modifier, onBack: () -> Unit) {
             }
             item {
                 Text(
-                    "Txao SMS ${runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()}. No analytics, no ads, no accounts. MMS (picture messages) is not supported yet.",
+                    "Txao SMS ${runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()}. No analytics, no ads, no accounts. Picture messages (MMS) need mobile data. Contact names, photos, backgrounds and usernames come from Txao Phone and your address book.",
                     Modifier.padding(8.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

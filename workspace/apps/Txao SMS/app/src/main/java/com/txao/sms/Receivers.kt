@@ -39,9 +39,19 @@ class SmsReceiver : BroadcastReceiver() {
     }
 }
 
-/** Required by Android for the default SMS app; MMS itself is not implemented. */
+/** Incoming picture message notification (WAP push): starts the download. */
 class MmsReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) = Unit
+    override fun onReceive(context: Context, intent: Intent) {
+        val data = intent.getByteArrayExtra("data") ?: return
+        val pending = goAsync()
+        Thread {
+            try {
+                Mms.onPush(context, data)
+            } finally {
+                pending.finish()
+            }
+        }.start()
+    }
 }
 
 /** "Reply with message" from the incoming-call screen. */

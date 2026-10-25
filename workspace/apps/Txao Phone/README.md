@@ -8,6 +8,7 @@ Dialer for Android in the TXAO glass look, with the layout and features people k
 - Contacts in alphabetical sections; create, edit and delete contacts inside the app (name, several phones and emails, address, company, birthday, notes, photo)
 - Custom background image per contact (editor), used behind their page and the call screen with a readability scrim
 - Usernames on WhatsApp, Telegram, Signal, Messenger, Instagram, Discord, Snapchat, X and Skype, tap to open the chat
+- Shares contact backgrounds read-only with Txao SMS (`content://com.txao.phone.share/background`) and opens a contact page when Txao SMS asks (`com.txao.phone.action.OPEN_CONTACT`)
 - Settings: optionally save new contacts to a Google account so they sync (off by default), editable decline quick replies
 - Contact page with photo header, star, edit, call / message / video / email / share / block, labelled numbers and emails, and the full call history
 - Search across contacts and recent calls, or call a typed number

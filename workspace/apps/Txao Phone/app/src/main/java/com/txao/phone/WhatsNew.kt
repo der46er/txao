@@ -29,6 +29,9 @@ object WhatsNew {
 
     /** Release notes by versionCode. Add an entry per release; versions without one show nothing. */
     val notes: Map<Int, List<String>> = mapOf(
+        10 to listOf(
+            "Txao SMS can now open a contact's page here and show their background image in chats.",
+        ),
         9 to listOf(
             "Custom background image per contact, shown on their page and on the call screen.",
             "New Settings screen: sync new contacts with your Google account, edit quick replies.",

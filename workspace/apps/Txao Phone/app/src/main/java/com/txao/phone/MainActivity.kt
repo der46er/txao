@@ -30,20 +30,33 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 
 class MainActivity : ComponentActivity() {
     private var initialNumber by mutableStateOf("")
+    private var openNumber by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initialNumber = telNumber(intent)
-        setContent { TxaoTheme { App(initialNumber) } }
+        openNumber = contactNumber(intent)
+        setContent { TxaoTheme { App(initialNumber, openNumber) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         initialNumber = telNumber(intent)
+        openNumber = contactNumber(intent)
     }
 
     private fun telNumber(i: Intent?) =
-        i?.data?.takeIf { it.scheme == "tel" }?.schemeSpecificPart?.let(PhoneUtil::normalize).orEmpty()
+        if (i?.action == ACTION_OPEN_CONTACT) ""
+        else i?.data?.takeIf { it.scheme == "tel" }?.schemeSpecificPart?.let(PhoneUtil::normalize).orEmpty()
+
+    /** Other Txao apps (e.g. Txao SMS) open a person's contact page with this action and the number as an extra. */
+    private fun contactNumber(i: Intent?) =
+        if (i?.action == ACTION_OPEN_CONTACT) i.getStringExtra(EXTRA_NUMBER)?.let(PhoneUtil::normalize).orEmpty() else ""
+
+    companion object {
+        const val ACTION_OPEN_CONTACT = "com.txao.phone.action.OPEN_CONTACT"
+        const val EXTRA_NUMBER = "number"
+    }
 }
 
 private val PERMS = arrayOf(
@@ -65,7 +78,7 @@ private val Tabs = listOf("Favorites" to Icons.Filled.Star, "Recents" to Icons.F
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun App(initialNumber: String) {
+private fun App(initialNumber: String, openNumber: String) {
     val ctx = LocalContext.current
     var granted by remember { mutableStateOf(hasAll(ctx)) }
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted = hasAll(ctx) }
@@ -109,7 +122,15 @@ private fun App(initialNumber: String) {
 
     var tab by remember { mutableIntStateOf(1) }
     var number by remember(initialNumber) { mutableStateOf(initialNumber) }
-    var screen by remember(initialNumber) { mutableStateOf<Screen?>(if (initialNumber.isNotEmpty()) Screen.Keypad else null) }
+    var screen by remember(initialNumber, openNumber) {
+        mutableStateOf<Screen?>(
+            when {
+                openNumber.isNotEmpty() -> Screen.Detail(openNumber, PhoneUtil.pretty(openNumber))
+                initialNumber.isNotEmpty() -> Screen.Keypad
+                else -> null
+            },
+        )
+    }
     val search = rememberTextFieldState()
     var menu by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }

@@ -45,6 +45,12 @@ object Backgrounds {
     fun uriForContact(ctx: Context, contactId: Long): String? =
         file(ctx, contactId).takeIf { it.exists() }?.let { Uri.fromFile(it).buildUpon().appendQueryParameter("v", it.lastModified().toString()).build().toString() }
 
+    /** The stored background image for a number, for [ShareProvider]. */
+    fun fileForNumber(ctx: Context, number: String): File? {
+        val id = prefs(ctx).getLong("n_" + PhoneUtil.key(number), 0L)
+        return if (id == 0L || PhoneUtil.key(number).isEmpty()) null else file(ctx, id).takeIf { it.exists() }
+    }
+
     fun uriForNumber(ctx: Context, number: String): String? {
         val id = prefs(ctx).getLong("n_" + PhoneUtil.key(number), 0L)
         return if (id == 0L || PhoneUtil.key(number).isEmpty()) null else uriForContact(ctx, id)
