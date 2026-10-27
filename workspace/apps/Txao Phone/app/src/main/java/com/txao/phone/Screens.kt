@@ -59,77 +59,7 @@ fun callVoicemail(ctx: Context) {
     }
 }
 
-private fun time(ctx: Context, t: Long) = DateFormat.getTimeFormat(ctx).format(t)
-
-@Composable
-fun FavoritesScreen(contacts: List<Contact>, recents: List<CallEntry>, onCall: (String) -> Unit, onOpen: (String, String) -> Unit) {
-    val starred = contacts.filter { it.starred }.distinctBy { it.id }
-    val frequent = Data.frequent(recents, starred.map { PhoneUtil.normalize(it.number) }.toSet())
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 160.dp)) {
-        if (starred.isEmpty() && frequent.isEmpty()) {
-            item { Empty("Star contacts from their page, and the people you call most show up here.") }
-        }
-        if (starred.isNotEmpty()) {
-            item { SectionHeader("Favorites") }
-            item {
-                // Fixed-height grid inside the list: three per row.
-                val rows = (starred.size + 2) / 3
-                LazyVerticalGrid(
-                    GridCells.Fixed(3), Modifier.fillMaxWidth().height((rows * 128).dp).padding(horizontal = 12.dp),
-                    userScrollEnabled = false,
-                ) {
-                    items(starred, key = { it.id }) { c ->
-                        Column(
-                            Modifier.padding(6.dp).glass(20.dp).clickable { onCall(c.number) }.padding(vertical = 14.dp).fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Avatar(c.name, 56.dp, c.number, c.photoUri)
-                            Text(c.name, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 8.dp, start = 6.dp, end = 6.dp))
-                        }
-                    }
-                }
-            }
-        }
-        if (frequent.isNotEmpty()) {
-            item { SectionHeader("Frequent") }
-            items(frequent, key = { it.id }) { c ->
-                PersonRow(c.label, PhoneUtil.pretty(c.number), { onOpen(c.number, c.label) }, number = c.number) {
-                    IconButton({ onCall(c.number) }) { Icon(Icons.Filled.Call, "Call", tint = Mint) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RecentsScreen(recents: List<CallEntry>, onCall: (String) -> Unit, onOpen: (String, String) -> Unit) {
-    val ctx = LocalContext.current
-    var missedOnly by remember { mutableStateOf(false) }
-    val groups = remember(recents, missedOnly) { Data.group(if (missedOnly) recents.filter { it.missed } else recents) }
-    val now = remember(recents) { System.currentTimeMillis() }
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(!missedOnly, { missedOnly = false }, { Text("All") })
-            FilterChip(missedOnly, { missedOnly = true }, { Text("Missed") })
-        }
-        if (groups.isEmpty()) Empty(if (missedOnly) "No missed calls." else "Your recent calls will show up here.")
-        LazyColumn(contentPadding = PaddingValues(bottom = 160.dp)) {
-            var lastDay = ""
-            groups.forEach { g ->
-                val day = PhoneUtil.dayLabel(now, g.first.date)
-                if (day != lastDay) { lastDay = day; item(key = "h$day") { SectionHeader(day) } }
-                item(key = g.first.id) {
-                    val c = g.first
-                    val count = if (g.count > 1) " (${g.count})" else ""
-                    val arrow = c.kind
-                    PersonRow(c.label + count, "$arrow · " + time(ctx, c.date), { onOpen(c.number, c.label) }, if (c.missed) Danger else Color.Unspecified, c.number) {
-                        IconButton({ onCall(c.number) }) { Icon(Icons.Filled.Call, "Call back", tint = Mint) }
-                    }
-                }
-            }
-        }
-    }
-}
+fun time(ctx: Context, t: Long) = DateFormat.getTimeFormat(ctx).format(t)
 
 @Composable
 fun ContactsScreen(contacts: List<Contact>, onOpen: (String, String) -> Unit, onNew: () -> Unit) {
@@ -157,18 +87,6 @@ fun ContactsScreen(contacts: List<Contact>, onOpen: (String, String) -> Unit, on
 }
 
 @Composable
-fun VoicemailScreen() {
-    val ctx = LocalContext.current
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(88.dp).glass(44.dp), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Voicemail, null, Modifier.size(40.dp), tint = Lavender) }
-        Spacer(Modifier.height(20.dp))
-        Text("Voicemail", fontSize = 22.sp, fontWeight = FontWeight.Black)
-        Text("Calls your carrier's voicemail box.", color = Muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
-        Button({ callVoicemail(ctx) }) { Icon(Icons.Filled.Call, null); Spacer(Modifier.width(8.dp)); Text("Call voicemail") }
-    }
-}
-
-@Composable
 fun SearchResults(query: String, contacts: List<Contact>, recents: List<CallEntry>, onCall: (String) -> Unit, onOpen: (String, String) -> Unit) {
     val digits = PhoneUtil.normalize(query)
     val people = remember(query, contacts) { contacts.filter { it.name.contains(query, true) || (digits.isNotEmpty() && PhoneUtil.normalize(it.number).contains(digits)) }.take(40) }
@@ -188,12 +106,11 @@ fun SearchResults(query: String, contacts: List<Contact>, recents: List<CallEntr
 }
 
 @Composable
-fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> Unit, onCall: () -> Unit, onClose: () -> Unit, onAddContact: (String) -> Unit) {
+fun KeypadScreen(number: String, contacts: List<Contact>, onChange: (String) -> Unit, onCall: () -> Unit, onAddContact: (String) -> Unit) {
     val ctx = LocalContext.current
     val tones = rememberKeyTones()
     val matches = remember(number, contacts) { if (number.isEmpty()) emptyList() else contacts.filter { PhoneUtil.matches(number, it.name, it.number) }.take(3) }
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth()) { IconButton(onClose) { Icon(Icons.Filled.KeyboardArrowDown, "Close keypad") } }
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.weight(1f).fillMaxWidth()) {
             matches.forEach { c ->
                 Row(Modifier.fillMaxWidth().clickable { onChange(PhoneUtil.normalize(c.number)) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

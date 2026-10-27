@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.txao.core.SyncController
+import com.txao.core.TxaoPrefs
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 
@@ -67,7 +70,7 @@ private val PERMS = arrayOf(
 private fun hasAll(ctx: Context) = PERMS.all { ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED }
 
 private sealed interface Screen {
-    data object Keypad : Screen
+    data object Contacts : Screen
     data class Detail(val number: String, val title: String, val contactId: Long? = null) : Screen
     data class Edit(val details: ContactDetails) : Screen
     data object Blocked : Screen
@@ -78,7 +81,7 @@ private data class CodeDialog(
     val title: String, val text: String, val loading: Boolean = false, val dialAsCall: Boolean = false, val showAbout: Boolean = false,
 )
 
-private val Tabs = listOf("Favorites" to Icons.Filled.Star, "Recents" to Icons.Filled.History, "Contacts" to Icons.Filled.Contacts, "Voicemail" to Icons.Filled.Voicemail)
+private val Tabs = listOf("Home" to Icons.Filled.Home, "Keypad" to Icons.Filled.Dialpad)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,6 +108,11 @@ private fun App(initialNumber: String, openNumber: String) {
     val requestDefault = { tryRequest(0) }
     val prefs = remember { ctx.getSharedPreferences("txao_phone", Context.MODE_PRIVATE) }
 
+    // Optional sync with the user's own Txao server (set up in Settings; nothing is sent until then).
+    val txaoPrefs = remember { TxaoPrefs(ctx, "phone") }
+    val syncScope = rememberCoroutineScope()
+    val reloadHook = remember { arrayOf<() -> Unit>({}) }
+    val sync = remember { SyncController(txaoPrefs, syncScope, ContactSyncStore(ctx)) { reloadHook[0]() } }
     var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
     var recents by remember { mutableStateOf<List<CallEntry>>(emptyList()) }
     fun reload() {
@@ -113,8 +121,9 @@ private fun App(initialNumber: String, openNumber: String) {
         recents = Data.recents(ctx)
         isDefault = DefaultDialer.isHeld(ctx)
     }
-    LaunchedEffect(granted) { reload() }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload() }
+    reloadHook[0] = { reload() }
+    LaunchedEffect(granted) { reload(); sync.requestSync(500) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload(); sync.requestSync(1500) }
     LaunchedEffect(Unit) { if (!granted) permLauncher.launch(PERMS + Manifest.permission.POST_NOTIFICATIONS) }
     // First launch: ask once to become the default phone app, so calls use our own call screen.
     LaunchedEffect(granted) {
@@ -124,24 +133,32 @@ private fun App(initialNumber: String, openNumber: String) {
         }
     }
 
-    var tab by remember { mutableIntStateOf(1) }
+    var tab by remember(initialNumber) { mutableIntStateOf(if (initialNumber.isNotEmpty()) 1 else 0) }
     var number by remember(initialNumber) { mutableStateOf(initialNumber) }
     var screen by remember(initialNumber, openNumber) {
         mutableStateOf<Screen?>(
             when {
                 openNumber.isNotEmpty() -> Screen.Detail(openNumber, PhoneUtil.pretty(openNumber))
-                initialNumber.isNotEmpty() -> Screen.Keypad
                 else -> null
             },
         )
     }
     val search = rememberTextFieldState()
     var menu by remember { mutableStateOf(false) }
+    val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        r.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { t -> search.edit { replace(0, length, t) } }
+    }
+    val voice: () -> Unit = {
+        if (search.text.isNotEmpty()) search.edit { replace(0, length, "") }
+        else try { voiceLauncher.launch(Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)) } catch (_: Exception) {}
+    }
     var confirmClear by remember { mutableStateOf(false) }
     val query = search.text.toString().trim()
+    // The latest action always wins: picking a tab or opening any screen drops the search, so stale results never cover it.
+    val clearSearch = { search.edit { replace(0, length, "") } }
 
     BackHandler(screen != null || query.isNotEmpty()) {
-        if (screen != null) screen = null else search.edit { replace(0, length, "") }
+        if (screen != null) screen = null else clearSearch()
     }
 
     // Placing a call never falls back to the system dialer: ask for the permission instead, then dial.
@@ -168,32 +185,38 @@ private fun App(initialNumber: String, openNumber: String) {
         }
     }
     LaunchedEffect(retryCall) { retryCall?.let { retryCall = null; call(it) } }
-    val open: (String, String) -> Unit = { n, t -> screen = Screen.Detail(n, t, contacts.firstOrNull { PhoneUtil.sameNumber(it.number, n) }?.id) }
+    val open: (String, String) -> Unit = { n, t -> clearSearch(); screen = Screen.Detail(n, t, contacts.firstOrNull { PhoneUtil.sameNumber(it.number, n) }?.id) }
     val photos = remember(contacts) { contacts.filter { it.photoUri != null }.associate { PhoneUtil.key(it.number) to it.photoUri!! } }
     val resolver: (String) -> String? = remember(photos) { { n -> photos[PhoneUtil.key(n)] } }
     val newContact: (String) -> Unit = { n -> screen = Screen.Edit(ContactDetails(phones = if (n.isEmpty()) emptyList() else listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }
 
     CompositionLocalProvider(LocalPhotoResolver provides resolver) {
     when (val s = screen) {
-        Screen.Keypad -> KeypadScreen(number, contacts, { number = it }, { call(number) }, { screen = null }, newContact)
-        is Screen.Detail -> ContactPage(s.contactId, s.number, s.title, { screen = null }, call, { d, n -> screen = Screen.Edit(d ?: ContactDetails(phones = listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }, { reload() })
+        Screen.Contacts -> Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton({ screen = null }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                Text("Contacts", fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Black)
+            }
+            ContactsScreen(contacts, open) { newContact("") }
+        }
+        is Screen.Detail -> ContactPage(s.contactId, s.number, s.title, { screen = null }, call, { d, n -> screen = Screen.Edit(d ?: ContactDetails(phones = listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }, { reload(); sync.requestSync() })
         is Screen.Edit -> EditorScreen(
             s.details, { screen = null },
-            { id -> reload(); screen = if (id != null) Screen.Detail("", s.details.name, id) else null },
-            { reload(); screen = null },
+            { id -> reload(); sync.requestSync(); screen = if (id != null) Screen.Detail("", s.details.name, id) else null },
+            { reload(); sync.requestSync(); screen = null },
         )
         Screen.Blocked -> BlockedScreen { screen = null }
-        Screen.Settings -> SettingsScreen({ screen = null }, { screen = Screen.Blocked }, isDefault, requestDefault)
+        Screen.Settings -> SettingsScreen({ screen = null }, { screen = Screen.Blocked }, isDefault, requestDefault, contacts, txaoPrefs, sync)
         null -> Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
             floatingActionButton = {
-                if (granted) FloatingActionButton({ screen = Screen.Keypad }, containerColor = Lavender, contentColor = OnLavender) { Icon(Icons.Filled.Dialpad, "Keypad") }
+                if (granted && tab == 0) FloatingActionButton({ clearSearch(); newContact("") }, containerColor = Lavender, contentColor = OnLavender) { Icon(Icons.Filled.PersonAdd, "New contact") }
             },
             bottomBar = {
                 NavigationBar(containerColor = androidx.compose.ui.graphics.Color(0x14FFFFFF)) {
                     Tabs.forEachIndexed { i, (label, icon) ->
                         NavigationBarItem(
-                            selected = tab == i, onClick = { tab = i }, icon = { Icon(icon, label) }, label = { Text(label, fontSize = 11.sp) },
+                            selected = tab == i, onClick = { clearSearch(); tab = i }, icon = { Icon(icon, label) }, label = { Text(label, fontSize = 11.sp) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = androidx.compose.ui.graphics.Color(0x33CDB8FF)),
                         )
                     }
@@ -207,10 +230,22 @@ private fun App(initialNumber: String, openNumber: String) {
                         TextButton(requestDefault) { Text("Set") }
                     }
                 }
-                // Search pill with overflow menu, like the stock dialer's top bar.
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().height(52.dp).glass(26.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Search, null, Modifier.padding(start = 16.dp), tint = Muted)
-                    Box(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                // Search pill like Google Phone: menu on the left, voice search on the right. Home tab only.
+                if (tab == 0) Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().height(52.dp).glass(26.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box {
+                        IconButton({ menu = true }) { Icon(Icons.Filled.Menu, "Menu") }
+                        DropdownMenu(menu, { menu = false }) {
+                            DropdownMenuItem({ Text("Voicemail") }, { menu = false; callVoicemail(ctx) })
+                            DropdownMenuItem({ Text("Contacts") }, { menu = false; screen = Screen.Contacts })
+                            DropdownMenuItem({ Text("Clear call history") }, { menu = false; confirmClear = true })
+                            DropdownMenuItem({ Text("Blocked numbers") }, { menu = false; screen = Screen.Blocked })
+                            DropdownMenuItem({ Text("Settings") }, { menu = false; screen = Screen.Settings })
+                            if (!isDefault) {
+                                DropdownMenuItem({ Text("Set as default phone app") }, { menu = false; requestDefault() })
+                            }
+                        }
+                    }
+                    Box(Modifier.weight(1f).padding(horizontal = 4.dp)) {
                         if (query.isEmpty()) Text("Search contacts & places", color = Muted)
                         BasicTextField(
                             search, Modifier.fillMaxWidth(), lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.SingleLine,
@@ -218,17 +253,7 @@ private fun App(initialNumber: String, openNumber: String) {
                             cursorBrush = SolidColor(Lavender),
                         )
                     }
-                    Box {
-                        IconButton({ menu = true }) { Icon(Icons.Filled.MoreVert, "More") }
-                        DropdownMenu(menu, { menu = false }) {
-                            DropdownMenuItem({ Text("Clear call history") }, { menu = false; confirmClear = true })
-                            DropdownMenuItem({ Text("Settings") }, { menu = false; screen = Screen.Settings })
-                            DropdownMenuItem({ Text("Blocked numbers") }, { menu = false; screen = Screen.Blocked })
-                            if (!isDefault) {
-                                DropdownMenuItem({ Text("Set as default phone app") }, { menu = false; requestDefault() })
-                            }
-                        }
-                    }
+                    IconButton({ voice() }) { Icon(if (query.isEmpty()) Icons.Filled.Mic else Icons.Filled.Close, if (query.isEmpty()) "Voice search" else "Clear") }
                 }
                 when {
                     !granted -> Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -236,11 +261,9 @@ private fun App(initialNumber: String, openNumber: String) {
                         Spacer(Modifier.height(16.dp))
                         Button({ permLauncher.launch(PERMS) }) { Text("Allow access") }
                     }
+                    tab == 1 -> KeypadScreen(number, contacts, { number = it }, { call(number) }, newContact)
                     query.isNotEmpty() -> SearchResults(query, contacts, recents, call, open)
-                    tab == 0 -> FavoritesScreen(contacts, recents, call, open)
-                    tab == 1 -> RecentsScreen(recents, call, open)
-                    tab == 2 -> ContactsScreen(contacts, open) { newContact("") }
-                    else -> VoicemailScreen()
+                    else -> HomeScreen(contacts, recents, call, open) { screen = Screen.Contacts }
                 }
             }
         }

@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
@@ -72,6 +73,8 @@ private fun CallScreen(onDone: () -> Unit) {
     val speaker = audio?.route == CallAudioState.ROUTE_SPEAKER
     val ringing = state == Call.STATE_RINGING
     val place = remember(number) { PhoneUtil.countryOf(number) }
+    val carrier = remember { carrierName(ctx) }
+    var more by remember { mutableStateOf(false) }
     val canMerge = other != null && call.details?.can(Call.Details.CAPABILITY_MERGE_CONFERENCE) == true
 
     Box(Modifier.fillMaxSize()) {
@@ -89,7 +92,7 @@ private fun CallScreen(onDone: () -> Unit) {
             }
         }
         Spacer(Modifier.height(24.dp))
-        Avatar(name ?: PhoneUtil.pretty(number), 168.dp, number, photo)
+        WavyAvatar(name ?: PhoneUtil.pretty(number), 176.dp, photo)
         Spacer(Modifier.height(16.dp))
         Text(name ?: PhoneUtil.pretty(number).ifEmpty { "Unknown" }, fontSize = 32.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
         if (name != null) Text(PhoneUtil.pretty(number), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -98,8 +101,8 @@ private fun CallScreen(onDone: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         val connected = call.details?.connectTimeMillis ?: 0L
         val label = when (state) {
-            Call.STATE_RINGING -> "Incoming call"
-            Call.STATE_DIALING, Call.STATE_CONNECTING -> "Calling…"
+            Call.STATE_RINGING -> "Incoming call via $carrier"
+            Call.STATE_DIALING, Call.STATE_CONNECTING -> "Calling via $carrier"
             Call.STATE_HOLDING -> "On hold"
             Call.STATE_DISCONNECTED -> "Call ended"
             else -> if (connected > 0) PhoneUtil.duration(((now - connected) / 1000).coerceAtLeast(0)) else "Connected"
@@ -127,25 +130,30 @@ private fun CallScreen(onDone: () -> Unit) {
             if (keypad) {
                 DtmfPad { call.playDtmfTone(it); call.stopDtmfTone() }
             } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    Toggle(Icons.Filled.MicOff, "Mute", muted) { muted = !muted; CallManager.toggleMute(muted) }
-                    Toggle(Icons.Filled.Dialpad, "Keypad", false) { keypad = true }
-                    Toggle(Icons.Filled.VolumeUp, "Speaker", speaker) { CallManager.setSpeaker(!speaker) }
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    val holding = state == Call.STATE_HOLDING
-                    Toggle(Icons.Filled.Pause, "Hold", holding) { if (holding) call.unhold() else call.hold() }
-                    Toggle(Icons.Filled.PersonAdd, "Add call", false) {
-                        ctx.startActivity(Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PillButton(Icons.Filled.Dialpad, "Keypad", false, Modifier.weight(1f)) { keypad = true }
+                    PillButton(Icons.Filled.MicOff, "Mute", muted, Modifier.weight(1f)) { muted = !muted; CallManager.toggleMute(muted) }
+                    PillButton(Icons.Filled.VolumeUp, "Speaker", speaker, Modifier.weight(1f)) { CallManager.setSpeaker(!speaker) }
+                    Box(Modifier.weight(1f)) {
+                        PillButton(Icons.Filled.MoreVert, "More", more, Modifier.fillMaxWidth()) { more = true }
+                        DropdownMenu(more, { more = false }) {
+                            val holding = state == Call.STATE_HOLDING
+                            DropdownMenuItem({ Text(if (holding) "Resume" else "Hold") }, { more = false; if (holding) call.unhold() else call.hold() })
+                            DropdownMenuItem({ Text("Add call") }, {
+                                more = false
+                                ctx.startActivity(Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                            })
+                            if (other != null && canMerge) DropdownMenuItem({ Text("Merge calls") }, { more = false; call.conference(other) })
+                        }
                     }
-                    if (other != null) Toggle(Icons.Filled.CallMerge, "Merge", false) { if (canMerge) call.conference(other) }
                 }
             }
-            Spacer(Modifier.height(32.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.height(28.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (keypad) TextButton({ keypad = false }) { Text("Hide keypad") }
-                RoundButton(Icons.Filled.CallEnd, Danger, "End") { call.disconnect() }
+                Box(Modifier.width(112.dp).height(72.dp).clip(RoundedCornerShape(36.dp)).background(Danger).clickable { call.disconnect() }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.CallEnd, "End call", tint = Color.White, modifier = Modifier.size(34.dp))
+                }
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -189,5 +197,51 @@ private fun DtmfPad(onKey: (Char) -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** Carrier name for the "Calling via" line; falls back to a neutral word when the phone does not report one. */
+private fun carrierName(ctx: Context): String =
+    try { ctx.getSystemService(android.telephony.TelephonyManager::class.java).networkOperatorName.takeIf { it.isNotBlank() } } catch (_: Exception) { null } ?: "phone"
+
+/** A rounded rectangle with a wavy outline: a circle whose radius ripples [lobes] times. */
+private class WavyShape(private val lobes: Int = 10, private val depth: Float = 0.045f) : androidx.compose.ui.graphics.Shape {
+    override fun createOutline(size: androidx.compose.ui.geometry.Size, layoutDirection: androidx.compose.ui.unit.LayoutDirection, density: androidx.compose.ui.unit.Density): androidx.compose.ui.graphics.Outline {
+        val path = androidx.compose.ui.graphics.Path()
+        val cx = size.width / 2; val cy = size.height / 2
+        val base = minOf(cx, cy) * (1f - depth)
+        val steps = 240
+        for (i in 0..steps) {
+            val a = (i / steps.toFloat()) * (2 * Math.PI).toFloat()
+            val r = base * (1f + depth * kotlin.math.sin(lobes * a))
+            val x = cx + r * kotlin.math.cos(a); val y = cy + r * kotlin.math.sin(a)
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        return androidx.compose.ui.graphics.Outline.Generic(path)
+    }
+}
+
+@Composable
+private fun WavyAvatar(name: String, size: androidx.compose.ui.unit.Dp, photoUri: String?) {
+    val photo = rememberPhoto(photoUri, 512)
+    val tint = avatarTint(name)
+    Box(
+        Modifier.size(size).clip(WavyShape()).background(Brush.linearGradient(listOf(tint.copy(alpha = 0.6f), tint.copy(alpha = 0.2f)))),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (photo != null) Image(photo, name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Text(name.trim().firstOrNull()?.uppercase() ?: "#", fontSize = (size.value * 0.42f).sp, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun PillButton(icon: ImageVector, label: String, on: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(
+        modifier.clip(RoundedCornerShape(28.dp)).background(if (on) Lavender else Color(0x1FFFFFFF)).clickable(onClick = onClick).padding(vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(icon, label, tint = if (on) OnLavender else Color.White)
+        Text(label, fontSize = 12.sp, color = if (on) OnLavender else Color.White, modifier = Modifier.padding(top = 4.dp))
     }
 }

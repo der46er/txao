@@ -20,6 +20,7 @@ class TxaoInCallService : InCallService() {
         override fun onStateChanged(call: Call, state: Int) {
             CallManager.bump()
             if (state != Call.STATE_RINGING) stopRinging()
+            if (state != Call.STATE_DISCONNECTED) CallNotifier.update(this@TxaoInCallService, call)
         }
         override fun onDetailsChanged(call: Call, details: Call.Details) = CallManager.bump()
     }
@@ -29,10 +30,11 @@ class TxaoInCallService : InCallService() {
         call.registerCallback(callback)
         CallManager.add(call)
         if (call.state == Call.STATE_RINGING) {
-            startRinging()
-            notifyIncoming(call)
+            startRinging(call)
+            CallNotifier.update(this, call)
         } else {
             startActivity(callIntent())
+            CallNotifier.update(this, call)
         }
     }
 
@@ -40,7 +42,8 @@ class TxaoInCallService : InCallService() {
         call.unregisterCallback(callback)
         CallManager.remove(call)
         stopRinging()
-        getSystemService(NotificationManager::class.java).cancel(NOTIF_ID)
+        val next = CallManager.primary()
+        if (next == null) CallNotifier.cancel(this) else CallNotifier.update(this, next)
         if (CallManager.calls.value.isEmpty()) CallManager.service = null
     }
 
@@ -50,8 +53,10 @@ class TxaoInCallService : InCallService() {
 
     private fun callIntent() = Intent(this, CallActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    private fun startRinging() {
-        ringtone = RingtoneManager.getRingtone(this, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))?.also { it.play() }
+    private fun startRinging(call: Call) {
+        // A ringtone picked on the contact's page wins over the phone's default.
+        val custom = Data.customRingtone(this, CallManager.number(call))?.let(android.net.Uri::parse)
+        ringtone = RingtoneManager.getRingtone(this, custom ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))?.also { it.play() }
         getSystemService(Vibrator::class.java)?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 800, 800), 0))
     }
 
@@ -59,28 +64,5 @@ class TxaoInCallService : InCallService() {
         ringtone?.stop()
         ringtone = null
         getSystemService(Vibrator::class.java)?.cancel()
-    }
-
-    private fun notifyIncoming(call: Call) {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Incoming calls", NotificationManager.IMPORTANCE_HIGH))
-        val number = CallManager.number(call)
-        val who = Data.lookupName(this, number) ?: PhoneUtil.pretty(number).ifEmpty { "Unknown" }
-        val pi = PendingIntent.getActivity(this, 0, callIntent(), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val n = Notification.Builder(this, CHANNEL)
-            .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle(who)
-            .setContentText("Incoming call")
-            .setCategory(Notification.CATEGORY_CALL)
-            .setOngoing(true)
-            .setContentIntent(pi)
-            .setFullScreenIntent(pi, true)
-            .build()
-        nm.notify(NOTIF_ID, n)
-    }
-
-    private companion object {
-        const val CHANNEL = "incoming_calls"
-        const val NOTIF_ID = 1
     }
 }

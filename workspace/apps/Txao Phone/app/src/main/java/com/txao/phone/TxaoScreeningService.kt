@@ -7,7 +7,9 @@ import android.telecom.CallScreeningService
 class TxaoScreeningService : CallScreeningService() {
     override fun onScreenCall(callDetails: Call.Details) {
         val number = callDetails.handle?.schemeSpecificPart.orEmpty()
-        val blocked = callDetails.callDirection == Call.Details.DIRECTION_INCOMING && Data.isBlocked(this, number)
+        val incoming = callDetails.callDirection == Call.Details.DIRECTION_INCOMING
+        // Blocked numbers and contacts set to "send to voicemail" never ring.
+        val blocked = incoming && (Data.isBlocked(this, number) || Data.sentToVoicemail(this, number))
         respondToCall(
             callDetails,
             CallResponse.Builder()

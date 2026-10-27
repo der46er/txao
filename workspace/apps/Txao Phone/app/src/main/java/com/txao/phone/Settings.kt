@@ -17,6 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.txao.core.SyncController
+import com.txao.core.SyncSection
+import com.txao.core.TxaoPrefs
 import java.io.File
 
 /** Small preference store for the Settings screen. */
@@ -97,12 +100,17 @@ fun googleAccounts(ctx: Context): List<GoogleAccount> {
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onBlocked: () -> Unit, isDefault: Boolean, onSetDefault: () -> Unit) {
+fun SettingsScreen(
+    onBack: () -> Unit, onBlocked: () -> Unit, isDefault: Boolean, onSetDefault: () -> Unit,
+    contacts: List<Contact>, prefs: TxaoPrefs, sync: SyncController,
+) {
     val ctx = LocalContext.current
     var sync by remember { mutableStateOf(AppSettings.syncGoogle(ctx)) }
     var account by remember { mutableStateOf(AppSettings.syncAccount(ctx)) }
     val accounts = remember { googleAccounts(ctx) }
     var replies by remember { mutableStateOf(quickReplies(ctx).joinToString("\n")) }
+    var emergency by remember { mutableStateOf(EmergencyStore.list(ctx)) }
+    var picking by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -137,6 +145,27 @@ fun SettingsScreen(onBack: () -> Unit, onBlocked: () -> Unit, isDefault: Boolean
                     }
                 }
             }
+            SectionHeader("Emergency contacts")
+            Column(Modifier.fillMaxWidth().glass(20.dp).padding(16.dp)) {
+                Text("People to reach in an emergency. The list syncs with your own server, and the button below opens your phone's Emergency information so you can add them there too.", fontSize = 13.sp, color = Muted)
+                emergency.forEach { e ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
+                            Text(e.name.ifBlank { PhoneUtil.pretty(e.number) })
+                            Text(PhoneUtil.pretty(e.number), fontSize = 13.sp, color = Muted)
+                        }
+                        TextButton({ EmergencyStore.set(ctx, e.name, e.number, false); emergency = EmergencyStore.list(ctx); sync.requestSync() }) { Text("Remove") }
+                    }
+                }
+                Row {
+                    TextButton({ picking = true }) { Text("Add contact") }
+                    TextButton({
+                        if (!EmergencyStore.openSystemEditor(ctx)) android.widget.Toast.makeText(ctx, "Could not open Emergency information", android.widget.Toast.LENGTH_SHORT).show()
+                    }) { Text("Open Emergency info") }
+                }
+                Text("Android does not let apps write to the system Emergency information, so the two lists stay separate.", fontSize = 12.sp, color = Muted)
+            }
+            SyncSection(prefs, sync, "contacts")
             SectionHeader("Calls")
             Column(Modifier.fillMaxWidth().glass(20.dp).padding(16.dp)) {
                 Text("Quick replies for declining a call (one per line)", fontSize = 13.sp, color = Muted)
@@ -151,5 +180,27 @@ fun SettingsScreen(onBack: () -> Unit, onBlocked: () -> Unit, isDefault: Boolean
             TextButton(onBlocked) { Text("Blocked numbers") }
             Spacer(Modifier.height(24.dp))
         }
+    }
+    if (picking) {
+        var q by remember { mutableStateOf("") }
+        val list = remember(q, contacts) { contacts.filter { q.isBlank() || it.name.contains(q, true) }.take(60) }
+        AlertDialog(
+            onDismissRequest = { picking = false },
+            title = { Text("Add emergency contact") },
+            text = {
+                Column {
+                    OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search") })
+                    androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 320.dp)) {
+                        items(list.size) { i ->
+                            val c = list[i]
+                            PersonRow(c.name, PhoneUtil.pretty(c.number), {
+                                EmergencyStore.set(ctx, c.name, c.number, true); emergency = EmergencyStore.list(ctx); picking = false; sync.requestSync()
+                            }, number = c.number, photoUri = c.photoUri)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton({ picking = false }) { Text("Close") } },
+        )
     }
 }

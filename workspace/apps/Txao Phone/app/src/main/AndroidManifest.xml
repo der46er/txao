@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Only used to sync contacts with the user's own Txao server, and only after they set that up in Settings. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Lets the system treat this app as a full phone app when it is chosen as the default dialer. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
@@ -93,5 +95,7 @@
                 <action android:name="android.telecom.CallScreeningService" />
             </intent-filter>
         </service>
+
+        <receiver android:name=".CallActionReceiver" android:exported="false" />
     </application>
 </manifest>
