@@ -124,14 +124,15 @@ object ContactsRepo {
     }
 
     /** Creates a new device contact (or rewrites the managed fields of an existing one). Returns the contact id. */
-    fun save(ctx: Context, edit: ContactEdit): Long? {
+    fun save(ctx: Context, edit: ContactEdit, localOnly: Boolean = false): Long? {
+        val account = if (localOnly) null else AppSettings.activeGoogleAccount(ctx)
         val d = edit.details
         val ops = ArrayList<ContentProviderOperation>()
         val creating = d.rawId == 0L
         if (creating) {
             ops += ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, AppSettings.activeGoogleAccount(ctx)?.let { "com.google" })
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, AppSettings.activeGoogleAccount(ctx)).build()
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, account?.let { "com.google" })
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, account).build()
         } else {
             ops += ContentProviderOperation.newDelete(D.CONTENT_URI)
                 .withSelection("${D.RAW_CONTACT_ID}=? AND ${D.MIMETYPE} IN (${MANAGED.joinToString(",") { "?" }})", arrayOf(d.rawId.toString()) + MANAGED).build()

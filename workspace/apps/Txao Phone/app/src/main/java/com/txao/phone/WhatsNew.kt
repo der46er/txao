@@ -29,6 +29,13 @@ object WhatsNew {
 
     /** Release notes by versionCode. Add an entry per release; versions without one show nothing. */
     val notes: Map<Int, List<String>> = mapOf(
+        12 to listOf(
+            "New look like Google Phone: Home with search bar, filter chips, Favorites and calls grouped by day, plus a Keypad tab.",
+            "Contact page has a Contact settings list: ringtone, reminder, share, home-screen shortcut, send to voicemail, block, delete.",
+            "New call screen, and on Xiaomi phones calls now show in the Hyper Island.",
+            "Search no longer sticks: picking a tab or opening something always wins.",
+            "Emergency contacts, and optional sync of your contacts with your own Txao server (Settings).",
+        ),
         11 to listOf(
             "Txao SMS can now open a contact's page here and show their background image in chats.",
         ),

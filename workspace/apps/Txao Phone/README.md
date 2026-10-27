@@ -1,9 +1,13 @@
 # Txao Phone
 
-Dialer for Android in the TXAO glass look, with the layout and features people know from the stock Google dialer. No analytics, no ads, no accounts, no network access.
+Dialer for Android in the TXAO glass look, with the layout and features people know from the stock Google dialer. No analytics, no ads, no accounts. The only network use is the optional sync with your own Txao server, off until you set it up in Settings.
 
-- Favorites (starred contacts) and Frequent (most called)
-- Recents grouped by caller, with an All / Missed filter, day headings and a call-details page (history, call, message, block, add contact, delete history)
+- Home like Google Phone: search bar with menu and voice search, All / Missed / Contacts / Non-spam chips, collapsible Favorites row, calls grouped by day in rounded cards with direction arrows and the SIM name on dual-SIM phones; second tab is the Keypad
+- The latest tap always wins: choosing a tab or opening anything clears the search so stale results never cover the screen
+- Contact settings list on the contact page: ringtone, call reminder, share vCard, home-screen shortcut, send to voicemail (also honoured by call screening), emergency contact, block, delete
+- Xiaomi Hyper Island: the call notification carries the HyperOS focus-notification extras (best effort, other phones get the normal call notification)
+- Emergency contacts in Settings (list synced with your server; the system Emergency information has no public write API, so a button opens it)
+- Optional sync of phone-only contacts, photos, backgrounds and emergency contacts with your own Txao server, the same server address and sync key as Notes and the other apps
 - Contact photos everywhere (lists, favorites, call details, in-call and incoming screens), with a tinted initial as fallback
 - Contacts in alphabetical sections; create, edit and delete contacts inside the app (name, several phones and emails, address, company, birthday, notes, photo)
 - Custom background image per contact (editor), used behind their page and the call screen with a readability scrim
@@ -14,7 +18,7 @@ Dialer for Android in the TXAO glass look, with the layout and features people k
 - Contact page with photo header, star, edit, call / message / video / email / share / block, labelled numbers and emails, and the full call history
 - Search across contacts and recent calls, or call a typed number
 - Keypad with contact suggestions by number or name (T9)
-- Voicemail tab that dials your carrier's voicemail
+- Voicemail in the menu dials your carrier's voicemail
 - Blocked numbers: callers on the block list are rejected before they ring (needs Txao Phone as the default phone app)
 - Real dialer: asks to become the default phone app on first launch, places calls through Telecom and shows its own call screen for outgoing and incoming calls (never the system dialer)
 - In-call screen: answer/decline, decline with a quick-reply message, mute, speaker, hold, add call, switch / merge calls, keypad tones, call timer, country of international numbers
@@ -29,7 +33,7 @@ gradle :app:testDebugUnitTest
 Signed APKs go in `dist/` as `txao-phone-v<version>-release-signed.apk` (keystore in `signing/`, git-ignored).
 
 ## Not yet done
-Settings screen (ringtone, vibration, editable quick replies), speed dial, in-call video UI, call recording, emergency contacts display, online spam lookup (the suite stays offline).
+Set calling SIM per contact, speed dial, in-call video UI, call recording, syncing Google-account contacts (they sync through Google), online spam lookup (the suite stays offline).
 
 ## Notes
 - Contact background images from Google Phone cannot be imported: Google keeps them private to its own apps and does not expose them through contacts sync or any Android API. Pick the image again from the contact page ("Background") instead.

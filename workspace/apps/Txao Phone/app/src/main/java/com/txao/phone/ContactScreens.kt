@@ -244,7 +244,7 @@ fun ContactPage(
                         val ok = if (blocked) Data.unblock(ctx, primary) else Data.block(ctx, primary)
                         if (ok) blocked = !blocked else note = "Make Txao Phone your default phone app to block numbers."
                     },
-                    onEmergency = { on -> EmergencyStore.set(ctx, name, primary, on); emergency = on },
+                    onEmergency = { on -> EmergencyStore.set(ctx, name, primary, on); emergency = on; onChanged() },
                     onDelete = { confirmDelete = true },
                 )
             }

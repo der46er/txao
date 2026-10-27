@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.txao.core.SyncController
+import com.txao.core.TxaoPrefs
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 
@@ -106,6 +108,11 @@ private fun App(initialNumber: String, openNumber: String) {
     val requestDefault = { tryRequest(0) }
     val prefs = remember { ctx.getSharedPreferences("txao_phone", Context.MODE_PRIVATE) }
 
+    // Optional sync with the user's own Txao server (set up in Settings; nothing is sent until then).
+    val txaoPrefs = remember { TxaoPrefs(ctx, "phone") }
+    val syncScope = rememberCoroutineScope()
+    val reloadHook = remember { arrayOf<() -> Unit>({}) }
+    val sync = remember { SyncController(txaoPrefs, syncScope, ContactSyncStore(ctx)) { reloadHook[0]() } }
     var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
     var recents by remember { mutableStateOf<List<CallEntry>>(emptyList()) }
     fun reload() {
@@ -114,8 +121,9 @@ private fun App(initialNumber: String, openNumber: String) {
         recents = Data.recents(ctx)
         isDefault = DefaultDialer.isHeld(ctx)
     }
-    LaunchedEffect(granted) { reload() }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload() }
+    reloadHook[0] = { reload() }
+    LaunchedEffect(granted) { reload(); sync.requestSync(500) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload(); sync.requestSync(1500) }
     LaunchedEffect(Unit) { if (!granted) permLauncher.launch(PERMS + Manifest.permission.POST_NOTIFICATIONS) }
     // First launch: ask once to become the default phone app, so calls use our own call screen.
     LaunchedEffect(granted) {
@@ -191,14 +199,14 @@ private fun App(initialNumber: String, openNumber: String) {
             }
             ContactsScreen(contacts, open) { newContact("") }
         }
-        is Screen.Detail -> ContactPage(s.contactId, s.number, s.title, { screen = null }, call, { d, n -> screen = Screen.Edit(d ?: ContactDetails(phones = listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }, { reload() })
+        is Screen.Detail -> ContactPage(s.contactId, s.number, s.title, { screen = null }, call, { d, n -> screen = Screen.Edit(d ?: ContactDetails(phones = listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }, { reload(); sync.requestSync() })
         is Screen.Edit -> EditorScreen(
             s.details, { screen = null },
-            { id -> reload(); screen = if (id != null) Screen.Detail("", s.details.name, id) else null },
-            { reload(); screen = null },
+            { id -> reload(); sync.requestSync(); screen = if (id != null) Screen.Detail("", s.details.name, id) else null },
+            { reload(); sync.requestSync(); screen = null },
         )
         Screen.Blocked -> BlockedScreen { screen = null }
-        Screen.Settings -> SettingsScreen({ screen = null }, { screen = Screen.Blocked }, isDefault, requestDefault)
+        Screen.Settings -> SettingsScreen({ screen = null }, { screen = Screen.Blocked }, isDefault, requestDefault, contacts, txaoPrefs, sync)
         null -> Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
             floatingActionButton = {

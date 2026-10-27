@@ -42,7 +42,7 @@ Ciphertext plaintext = UTF-8 JSON `{"t": <type>, ...}`. Item id prefix says the 
 | Calendar | `c_<id>` calendar, `e_<id>` event (recurrence rule as RFC 5545 string, reminders) | none | device-calendar import stays local |
 | Authenticator | `k_<id>` account (issuer, name, algorithm, digits, period, **secret**) | none | highest sensitivity: sync is a separate switch, off until enabled; secrets are never shown in logs or notifications |
 | SMS | `s_<id>` per-conversation settings (pin, mute, archive, labels), `b_<id>` blocked number, `q_<id>` quick replies | none | message bodies are **not** synced (the carrier/phone number is the source of truth); an encrypted archive export is separate and manual |
-| Phone | `f_<id>` favourites / speed dial, `b_<id>` blocked number, `r_<id>` call-note | none | call log is not synced |
+| Phone | `c_<id>` contact (name, phones, emails, address, company, birthday, notes, IM usernames, starred), `e_<phoneKey>` emergency contact (name, number); planned: `f_<id>` speed dial, `b_<id>` blocked number, `r_<id>` call-note | `cp_<id>_<hash>` contact photo, `cb_<id>_<hash>` contact background image | only contacts stored on the phone itself (not Google/Exchange accounts, those already sync through their own account); call log is not synced; the system Emergency information cannot be written by apps |
 | Music | `p_<id>` playlist (track references by title/artist/duration hash), `h_<id>` favourites, listening stats | none | audio files are never uploaded |
 
 Every item has `updatedAt` (ms) and `t`; unknown `t` values are ignored (forward compatible); an item that fails to decrypt is
