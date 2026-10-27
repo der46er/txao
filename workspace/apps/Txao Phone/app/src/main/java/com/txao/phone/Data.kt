@@ -119,6 +119,19 @@ object Data {
         }
     }
 
+    /** The contact's own ringtone, if one was picked on their page. */
+    fun customRingtone(ctx: Context, number: String): String? {
+        if (number.isEmpty()) return null
+        return try {
+            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+            ctx.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup.CUSTOM_RINGTONE), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0) else null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun lookupName(ctx: Context, number: String): String? {
         if (number.isEmpty()) return null
         return try {

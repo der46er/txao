@@ -93,5 +93,7 @@
                 <action android:name="android.telecom.CallScreeningService" />
             </intent-filter>
         </service>
+
+        <receiver android:name=".CallActionReceiver" android:exported="false" />
     </application>
 </manifest>
