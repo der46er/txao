@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
@@ -74,7 +75,7 @@ fun FilesApp(prefs: Prefs, resumeTick: Int, requestAccess: () -> Unit) {
     FilesBackground(Modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalFolderColors provides folderColors) {
             val allowed = remember(resumeTick) { MainActivity.hasAccess() }
-            if (!allowed) AccessGate(requestAccess) else Browser(prefs, folderColors)
+            if (!allowed) AccessGate(requestAccess) else Browser(prefs, folderColors, requestAccess)
         }
     }
 }
@@ -103,7 +104,7 @@ private fun AccessGate(request: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Browser(prefs: Prefs, folderColors: FolderColors) {
+private fun Browser(prefs: Prefs, folderColors: FolderColors, requestAccess: () -> Unit) {
     val ctx = LocalContext.current
     val vols = remember { volumes(ctx) }
     var homePath by remember { mutableStateOf(prefs.homePath) }
@@ -280,6 +281,7 @@ private fun Browser(prefs: Prefs, folderColors: FolderColors) {
                                 dir = File(p), layout = l, refresh = refresh, showHidden = showHidden,
                                 sortField = sortField, sortAsc = sortAsc, selected = selected,
                                 onPaths = { if (p == path) entryPaths = it },
+                                onShowHidden = { showHidden = true; prefs.showHidden = true },
                                 onClick = { e -> if (selecting) selected = toggle(selected, e) else open(e) },
                                 onLong = { e -> selected = toggle(selected, e) },
                             )
@@ -348,6 +350,7 @@ private fun Browser(prefs: Prefs, folderColors: FolderColors) {
                     releaseIfIdle()
                 }
             },
+            onOpenAccess = requestAccess,
             onClose = { showSettings = false },
         )
     }
@@ -436,12 +439,16 @@ private const val PAGE = 20
 @Composable
 private fun FolderContent(
     dir: File, layout: FolderLayout, refresh: Int, showHidden: Boolean, sortField: SortField, sortAsc: Boolean,
-    selected: Set<String>, onPaths: (List<String>) -> Unit, onClick: (Entry) -> Unit, onLong: (Entry) -> Unit,
+    selected: Set<String>, onPaths: (List<String>) -> Unit, onShowHidden: () -> Unit, onClick: (Entry) -> Unit, onLong: (Entry) -> Unit,
 ) {
-    val sorted by produceState<List<File>?>(null, dir.path, refresh, showHidden, sortField, sortAsc) {
-        value = withContext(Dispatchers.IO) { listSorted(dir, showHidden, sortField, sortAsc) }
+    val sorted by produceState<Pair<List<File>, Int>?>(null, dir.path, refresh, showHidden, sortField, sortAsc) {
+        value = withContext(Dispatchers.IO) {
+            // Also counts the dot-files that are filtered out, so the screen can say so.
+            listSorted(dir, showHidden, sortField, sortAsc) to (if (showHidden) 0 else dir.list()?.count { it.startsWith(".") } ?: 0)
+        }
     }
-    val all = sorted
+    val all = sorted?.first
+    val hiddenCount = sorted?.second ?: 0
     if (all == null) {
         // Keep the full size while loading so the container never collapses mid-transition.
         Box(Modifier.fillMaxSize())
@@ -450,10 +457,13 @@ private fun FolderContent(
     LaunchedEffect(all) { onPaths(all.map { it.path }) }
     if (all.isEmpty()) {
         Box(Modifier.fillMaxSize().padding(bottom = 64.dp), contentAlignment = Alignment.Center) {
-            Text(
-                if (dir.list() == null) "Android does not let apps read this folder" else "This folder is empty",
-                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    if (dir.list() == null) "Android does not let apps read this folder" else "This folder is empty",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+                )
+                if (hiddenCount > 0) TextButton(onShowHidden) { Text("Show $hiddenCount hidden items") }
+            }
         }
         return
     }
@@ -467,27 +477,41 @@ private fun FolderContent(
         }
     }
     val canMore = shown < all.size && loaded.size >= shown
+    Column(Modifier.fillMaxSize()) {
+    Text(
+        itemsLabel(all.size) + if (hiddenCount > 0) " · $hiddenCount hidden" else "",
+        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+    )
     if (layout == FolderLayout.Grid) {
         val state = rememberLazyGridState()
-        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 } } }
+        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 || !state.canScrollForward } } }
         LaunchedEffect(nearEnd, canMore, loaded.size) { if (nearEnd && canMore) shown += PAGE }
-        LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
+        LazyVerticalGrid(GridCells.Fixed(4), Modifier.weight(1f).fillMaxWidth(), state = state, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) {
             items(loaded, key = { it.file.path }) { e ->
                 GridTile(e, e.file.path in selected, Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
             }
+            if (hiddenCount > 0) item(span = { GridItemSpan(maxLineSpan) }) { HiddenNote(hiddenCount, onShowHidden) }
             item { Spacer(Modifier.height(100.dp)) }
         }
     } else {
         val state = rememberLazyListState()
-        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 } } }
+        val nearEnd by remember { derivedStateOf { state.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - 6 || !state.canScrollForward } } }
         LaunchedEffect(nearEnd, canMore, loaded.size) { if (nearEnd && canMore) shown += PAGE }
-        LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(vertical = 6.dp)) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = state, contentPadding = PaddingValues(vertical = 6.dp)) {
             items(loaded, key = { it.file.path }) { e ->
                 ListRow(e, e.file.path in selected, subtitleParent = false, modifier = Modifier.animateItem(), onClick = { onClick(e) }, onLong = { onLong(e) })
             }
+            if (hiddenCount > 0) item { HiddenNote(hiddenCount, onShowHidden) }
             item { Spacer(Modifier.height(100.dp)) }
         }
     }
+    }
+}
+
+@Composable
+private fun HiddenNote(count: Int, onShow: () -> Unit) {
+    TextButton(onShow, Modifier.fillMaxWidth()) { Text("$count hidden items not shown. Tap to show") }
 }
 
 private sealed interface Dialog {
@@ -781,7 +805,7 @@ private fun NameDialog(title: String, initial: String, confirm: String, onDismis
 private fun SettingsScreen(
     prefs: Prefs, fadeMs: Int, onFade: (Int) -> Unit, showHidden: Boolean, onHidden: (Boolean) -> Unit,
     vols: List<Volume>, homePath: String, onHome: (String) -> Unit,
-    vaultMode: String, onUsePassword: () -> Unit, onUseDevice: () -> Unit, onClose: () -> Unit,
+    vaultMode: String, onUsePassword: () -> Unit, onUseDevice: () -> Unit, onOpenAccess: () -> Unit, onClose: () -> Unit,
 ) {
     val ctx = LocalContext.current
     var news by remember { mutableStateOf(false) }
@@ -856,10 +880,15 @@ private fun SettingsScreen(
                 Text("Show hidden files", Modifier.weight(1f), fontSize = 15.sp)
                 Switch(showHidden, onHidden)
             }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "All files access: ${if (MainActivity.hasAccess()) "allowed" else "not allowed"}",
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onOpenAccess) { Text("Open All files access settings") }
         }
         SettingsCard("About") {
             Text("Txao Files ${appVersion(ctx)}", fontSize = 15.sp)
-            Text("All files access: ${if (MainActivity.hasAccess()) "allowed" else "not allowed"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("No analytics, no ads, no accounts, no network access.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton({ news = true }) { Text("What's new") }
         }
