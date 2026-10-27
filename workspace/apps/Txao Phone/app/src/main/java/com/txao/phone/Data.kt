@@ -12,7 +12,7 @@ data class Contact(val id: Long, val name: String, val number: String, val starr
     val lookupUri: Uri get() = ContactsContract.Contacts.getLookupUri(id, null) ?: Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, id.toString())
 }
 
-data class CallEntry(val id: Long, val number: String, val name: String?, val type: Int, val date: Long, val duration: Long) {
+data class CallEntry(val id: Long, val number: String, val name: String?, val type: Int, val date: Long, val duration: Long, val accountId: String? = null) {
     val missed get() = type == CallLog.Calls.MISSED_TYPE
     val declined get() = type == CallLog.Calls.REJECTED_TYPE
     val blocked get() = type == CallLog.Calls.BLOCKED_TYPE
@@ -45,16 +45,26 @@ object Data {
 
     fun recents(ctx: Context, limit: Int = 400): List<CallEntry> {
         val out = ArrayList<CallEntry>()
-        val cols = arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION)
+        val cols = arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION, CallLog.Calls.PHONE_ACCOUNT_ID)
         try {
             ctx.contentResolver.query(CallLog.Calls.CONTENT_URI, cols, null, null, "${CallLog.Calls.DATE} DESC")?.use { c ->
                 while (c.moveToNext() && out.size < limit) {
-                    out += CallEntry(c.getLong(0), c.getString(1).orEmpty(), c.getString(2), c.getInt(3), c.getLong(4), c.getLong(5))
+                    out += CallEntry(c.getLong(0), c.getString(1).orEmpty(), c.getString(2), c.getInt(3), c.getLong(4), c.getLong(5), c.getString(6))
                 }
             }
         } catch (_: SecurityException) {
         }
         return out
+    }
+
+    /** Carrier names by call-log account id, only when the phone has more than one SIM (otherwise the label is noise). */
+    fun simLabels(ctx: Context): Map<String, String> = try {
+        val tm = ctx.getSystemService(android.telecom.TelecomManager::class.java)
+        val accounts = tm.callCapablePhoneAccounts
+        if (accounts.size < 2) emptyMap()
+        else accounts.associate { h -> h.id to (tm.getPhoneAccount(h)?.label?.toString()?.takeIf { it.isNotBlank() } ?: "SIM") }
+    } catch (_: Exception) {
+        emptyMap()
     }
 
     fun group(calls: List<CallEntry>): List<CallGroup> {
