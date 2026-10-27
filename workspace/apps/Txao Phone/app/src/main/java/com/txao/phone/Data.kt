@@ -106,6 +106,19 @@ object Data {
         }
     }
 
+    /** True when the contact for this number is set to "send to voicemail". */
+    fun sentToVoicemail(ctx: Context, number: String): Boolean {
+        if (number.isEmpty()) return false
+        return try {
+            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+            ctx.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup.SEND_TO_VOICEMAIL), null, null, null)?.use {
+                it.moveToFirst() && it.getInt(0) == 1
+            } ?: false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun lookupName(ctx: Context, number: String): String? {
         if (number.isEmpty()) return null
         return try {

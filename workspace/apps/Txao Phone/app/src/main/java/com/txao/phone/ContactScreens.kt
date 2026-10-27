@@ -122,6 +122,8 @@ fun ContactPage(
     }
     var blocked by remember(number) { mutableStateOf(Data.isBlocked(ctx, number)) }
     var note by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var emergency by remember(number, reload) { mutableStateOf(EmergencyStore.isEmergency(ctx, number)) }
     val name = details?.name?.ifEmpty { null } ?: title
     val primary = details?.phones?.firstOrNull { it.primary }?.value ?: numbers.firstOrNull() ?: number
     val photo = rememberPhoto(details?.photoUri, 1024)
@@ -221,7 +223,7 @@ fun ContactPage(
             if (d.birthday.isNotEmpty()) item { InfoCard { InfoRow(Icons.Filled.Cake, PhoneUtil.birthdayLabel(d.birthday), "Birthday") } }
             if (d.notes.isNotEmpty()) item { InfoCard { InfoRow(Icons.Filled.Notes, d.notes, "Notes") } }
         }
-        if (history.isNotEmpty()) item { Spacer(Modifier.height(8.dp)); SectionHeader("History") }
+        if (history.isNotEmpty()) item { Spacer(Modifier.height(8.dp)); SectionHeader("Recent activity") }
         items(history, key = { it.id }) { c ->
             val icon = when { c.missed -> Icons.AutoMirrored.Filled.CallMissed; c.outgoing -> Icons.AutoMirrored.Filled.CallMade; else -> Icons.AutoMirrored.Filled.CallReceived }
             val kind = c.kind
@@ -234,12 +236,38 @@ fun ContactPage(
                 if (c.duration > 0) Text(PhoneUtil.duration(c.duration), color = Muted)
             }
         }
+        details?.let { d ->
+            item {
+                ContactSettingsCard(
+                    d.contactId, name, primary, blocked, emergency,
+                    onBlock = {
+                        val ok = if (blocked) Data.unblock(ctx, primary) else Data.block(ctx, primary)
+                        if (ok) blocked = !blocked else note = "Make Txao Phone your default phone app to block numbers."
+                    },
+                    onEmergency = { on -> EmergencyStore.set(ctx, name, primary, on); emergency = on },
+                    onDelete = { confirmDelete = true },
+                )
+            }
+        }
         if (history.isNotEmpty()) item {
             TextButton({ Data.deleteHistory(ctx, history.map { it.id }); history = emptyList(); onChanged() }, Modifier.padding(8.dp)) {
                 Icon(Icons.Filled.Delete, null); Spacer(Modifier.width(8.dp)); Text("Delete call history")
             }
         }
     }
+    if (confirmDelete) {
+        DeleteContactDialog(name, { confirmDelete = false; details?.let { if (ContactsRepo.delete(ctx, it.contactId)) { onChanged(); onBack() } } }, { confirmDelete = false })
+    }
+}
+
+@Composable
+private fun DeleteContactDialog(name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete ${name.ifEmpty { "contact" }}?") }, text = { Text("This removes the contact from this phone.") },
+        confirmButton = { TextButton(onConfirm) { Text("Delete", color = Danger) } },
+        dismissButton = { TextButton(onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
