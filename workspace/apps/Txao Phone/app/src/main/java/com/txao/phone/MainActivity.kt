@@ -139,9 +139,11 @@ private fun App(initialNumber: String, openNumber: String) {
     var menu by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     val query = search.text.toString().trim()
+    // The latest action always wins: picking a tab or opening any screen drops the search, so stale results never cover it.
+    val clearSearch = { search.edit { replace(0, length, "") } }
 
     BackHandler(screen != null || query.isNotEmpty()) {
-        if (screen != null) screen = null else search.edit { replace(0, length, "") }
+        if (screen != null) screen = null else clearSearch()
     }
 
     // Placing a call never falls back to the system dialer: ask for the permission instead, then dial.
@@ -168,7 +170,7 @@ private fun App(initialNumber: String, openNumber: String) {
         }
     }
     LaunchedEffect(retryCall) { retryCall?.let { retryCall = null; call(it) } }
-    val open: (String, String) -> Unit = { n, t -> screen = Screen.Detail(n, t, contacts.firstOrNull { PhoneUtil.sameNumber(it.number, n) }?.id) }
+    val open: (String, String) -> Unit = { n, t -> clearSearch(); screen = Screen.Detail(n, t, contacts.firstOrNull { PhoneUtil.sameNumber(it.number, n) }?.id) }
     val photos = remember(contacts) { contacts.filter { it.photoUri != null }.associate { PhoneUtil.key(it.number) to it.photoUri!! } }
     val resolver: (String) -> String? = remember(photos) { { n -> photos[PhoneUtil.key(n)] } }
     val newContact: (String) -> Unit = { n -> screen = Screen.Edit(ContactDetails(phones = if (n.isEmpty()) emptyList() else listOf(Labeled(ContactsRepo.PHONE_TYPES[0], null, n)))) }
@@ -187,13 +189,13 @@ private fun App(initialNumber: String, openNumber: String) {
         null -> Scaffold(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
             floatingActionButton = {
-                if (granted) FloatingActionButton({ screen = Screen.Keypad }, containerColor = Lavender, contentColor = OnLavender) { Icon(Icons.Filled.Dialpad, "Keypad") }
+                if (granted) FloatingActionButton({ clearSearch(); screen = Screen.Keypad }, containerColor = Lavender, contentColor = OnLavender) { Icon(Icons.Filled.Dialpad, "Keypad") }
             },
             bottomBar = {
                 NavigationBar(containerColor = androidx.compose.ui.graphics.Color(0x14FFFFFF)) {
                     Tabs.forEachIndexed { i, (label, icon) ->
                         NavigationBarItem(
-                            selected = tab == i, onClick = { tab = i }, icon = { Icon(icon, label) }, label = { Text(label, fontSize = 11.sp) },
+                            selected = tab == i, onClick = { clearSearch(); tab = i }, icon = { Icon(icon, label) }, label = { Text(label, fontSize = 11.sp) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = androidx.compose.ui.graphics.Color(0x33CDB8FF)),
                         )
                     }
