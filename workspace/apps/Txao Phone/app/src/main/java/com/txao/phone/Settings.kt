@@ -105,7 +105,7 @@ fun SettingsScreen(
     contacts: List<Contact>, prefs: TxaoPrefs, sync: SyncController,
 ) {
     val ctx = LocalContext.current
-    var sync by remember { mutableStateOf(AppSettings.syncGoogle(ctx)) }
+    var syncOn by remember { mutableStateOf(AppSettings.syncGoogle(ctx)) }
     var account by remember { mutableStateOf(AppSettings.syncAccount(ctx)) }
     val accounts = remember { googleAccounts(ctx) }
     var replies by remember { mutableStateOf(quickReplies(ctx).joinToString("\n")) }
@@ -125,12 +125,12 @@ fun SettingsScreen(
                         Text("Sync new contacts with Google")
                         Text("New contacts are saved to your Google account so they sync to your other devices.", fontSize = 13.sp, color = Muted)
                     }
-                    Switch(sync, {
-                        sync = it; AppSettings.setSyncGoogle(ctx, it)
+                    Switch(syncOn, {
+                        syncOn = it; AppSettings.setSyncGoogle(ctx, it)
                         if (it && account == null) accounts.firstOrNull()?.let { a -> account = a.name; AppSettings.setSyncAccount(ctx, a.name) }
                     })
                 }
-                if (sync) {
+                if (syncOn) {
                     Spacer(Modifier.height(8.dp))
                     if (accounts.isEmpty()) {
                         Text("No Google account found on this phone. New contacts are saved on the phone only.", fontSize = 13.sp, color = Danger)
