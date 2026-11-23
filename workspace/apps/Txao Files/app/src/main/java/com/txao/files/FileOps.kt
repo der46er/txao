@@ -96,8 +96,8 @@ fun kindOf(f: File): Kind {
         "jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "avif" -> Kind.Image
         "mp4", "mkv", "webm", "mov", "3gp", "avi", "m4v" -> Kind.Video
         "mp3", "m4a", "aac", "ogg", "opus", "flac", "wav", "amr" -> Kind.Audio
-        "txt", "md", "pdf", "doc", "docx", "odt", "xls", "xlsx", "ppt", "pptx", "csv", "json", "xml", "html", "log", "rtf" -> Kind.Document
-        "zip", "rar", "7z", "tar", "gz", "bz2", "xz" -> Kind.Archive
+        "txt", "md", "pdf", "svg", "doc", "docx", "odt", "xls", "xlsx", "ppt", "pptx", "csv", "json", "xml", "html", "log", "rtf" -> Kind.Document
+        "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "tgz", "zst" -> Kind.Archive
         "apk", "apks", "xapk" -> Kind.Apk
         else -> Kind.Other
     }

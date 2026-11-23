@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Browsing, renaming, copying and deleting files anywhere in shared storage. -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- Older-style storage access, which some phone makers still check before listing folders. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <!-- Opening .apk files from the file list (the system installer still asks). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
