@@ -5,18 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#16161c">
-  <title>TXAO Camp Guide · Download T-1.5</title>
+  <title>TXAO Camp Guide Download</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/der46er/website/main/assets/favicon.png">
   <meta name="description" content="Download TXAO Camp Guide (T-1.5) for Android — offline fan guide for Camp Buddy v2.2.1.">
-
-  <!-- Google Fonts: Orbitron for the TXAO™ wordmark & Roboto for Material 3 UI -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 
   <style>
-    /* ==========================================================================
-       Txao Material 3 Design Tokens (Strict Dark Mode Only)
-       ========================================================================== */
     :root {
       color-scheme: dark;
       --primary: #9b8cff;
@@ -43,9 +39,6 @@
       --emph: cubic-bezier(0.05, 0.7, 0.1, 1);
     }
 
-    /* ==========================================================================
-       Base & Reset
-       ========================================================================== */
     *, *::before, *::after {
       box-sizing: border-box;
     }
@@ -84,9 +77,6 @@
       border-radius: 4px;
     }
 
-    /* ==========================================================================
-       Shell & Top Bar
-       ========================================================================== */
     .shell {
       min-height: 100dvh;
       display: flex;
@@ -141,9 +131,6 @@
       flex: 0 0 auto;
     }
 
-    /* ==========================================================================
-       Centered Main Content & Single Card (max-width 560px)
-       ========================================================================== */
     .main {
       width: 100%;
       max-width: 560px;
@@ -263,9 +250,6 @@
       color: var(--on-surface-variant);
     }
 
-    /* ==========================================================================
-       Material 3 Pill Buttons & Ripple
-       ========================================================================== */
     .actions {
       display: flex;
       flex-direction: column;
@@ -364,9 +348,6 @@
       animation: ripple 0.6s var(--emph) forwards;
     }
 
-    /* ==========================================================================
-       Metadata List
-       ========================================================================== */
     .list {
       list-style: none;
       margin: 0;
@@ -403,9 +384,6 @@
       text-decoration: underline;
     }
 
-    /* ==========================================================================
-       Clean Footer & Snackbar
-       ========================================================================== */
     .footer {
       display: flex;
       flex-wrap: wrap;
@@ -475,7 +453,6 @@
 </head>
 <body>
   <div class="shell">
-    <!-- Minimal Dark Top Bar -->
     <header class="top-bar">
       <a href="https://txao.eu/" class="wordmark" aria-label="TXAO Home">TXAO</a>
 
@@ -487,10 +464,8 @@
       </a>
     </header>
 
-    <!-- Single Centered Card (max-width 560px) -->
     <main class="main" id="main">
       <section class="card" aria-labelledby="app-title">
-        <!-- App Identity -->
         <div class="app-identity">
           <div class="app-icon-wrap" id="icon-wrap">
             <img
@@ -500,7 +475,6 @@
               height="72"
               onerror="this.parentElement.classList.add('fallback')"
             >
-            <!-- Offline SVG Fallback -->
             <svg class="app-icon-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
               <circle cx="12" cy="10.2" r="5"/>
@@ -518,12 +492,10 @@
           </div>
         </div>
 
-        <!-- Subtitle / Description -->
         <p class="description">
           Offline fan guide for Camp Buddy v2.2.1. Pick any character and view every choice with the optimal option and point values.
         </p>
 
-        <!-- Primary Download Actions -->
         <div class="actions">
           <a
             href="https://txao.eu/download/TXAO_Camp_Guide_T-1.5.apk"
@@ -551,7 +523,6 @@
           </a>
         </div>
 
-        <!-- Metadata List -->
         <ul class="list" aria-label="Release metadata">
           <li>
             <span class="label">Release</span>
@@ -574,7 +545,6 @@
         </ul>
       </section>
 
-      <!-- Clean Footer -->
       <footer class="footer">
         <a href="https://txao.eu/legal" target="_blank" rel="noopener noreferrer">Legal</a>
         <span aria-hidden="true">·</span>
@@ -583,7 +553,6 @@
     </main>
   </div>
 
-  <!-- Snackbar Feedback -->
   <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
 
   <script>
@@ -599,7 +568,6 @@
         toastTimer = setTimeout(() => snackbar.classList.remove('show'), 3000);
       }
 
-      // Material 3 Ripple effect
       document.addEventListener('pointerdown', (e) => {
         const btn = e.target.closest('.btn');
         if (!btn) return;
