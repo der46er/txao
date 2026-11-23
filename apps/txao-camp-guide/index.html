@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#16161c">
+  <title>TXAO Camp Guide · Download T-1.5</title>
+  <meta name="description" content="Download TXAO Camp Guide (T-1.5) for Android — offline fan guide for Camp Buddy v2.2.1.">
+
+  <!-- Google Fonts: Orbitron for the TXAO™ wordmark & Roboto for Material 3 UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       Txao Material 3 Design Tokens (Strict Dark Mode Only)
+       ========================================================================== */
+    :root {
+      color-scheme: dark;
+      --primary: #9b8cff;
+      --on-primary: #14093d;
+      --primary-container: #3f3480;
+      --on-primary-container: #e6deff;
+      --secondary-container: #33304a;
+      --on-secondary-container: #e3dfff;
+      --surface: #16161c;
+      --surface-container: #1e1e26;
+      --surface-high: #272730;
+      --surface-highest: #31313b;
+      --on-surface: #e6e4f2;
+      --on-surface-variant: #c9c5d8;
+      --outline: #8f8ba3;
+      --outline-variant: #3d3b4d;
+      --success-container: #0f5128;
+      --on-success-container: #b8f0c4;
+      --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px 1px rgb(0 0 0 / 0.25);
+      --shadow-3: 0 1px 3px rgb(0 0 0 / 0.4), 0 4px 8px 3px rgb(0 0 0 / 0.25);
+      --font: 'Roboto', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      --display: 'Orbitron', var(--font);
+      --ease: cubic-bezier(0.2, 0, 0, 1);
+      --emph: cubic-bezier(0.05, 0.7, 0.1, 1);
+    }
+
+    /* ==========================================================================
+       Base & Reset
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      overflow-x: hidden;
+      background: var(--surface);
+      color: var(--on-surface);
+      font: 400 1rem/1.5 var(--font);
+      letter-spacing: 0.03125em;
+      text-size-adjust: 100%;
+    }
+
+    ::selection {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+    }
+
+    h1, p {
+      margin: 0;
+    }
+
+    a {
+      color: var(--primary);
+      text-underline-offset: 3px;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ==========================================================================
+       Shell & Top Bar
+       ========================================================================== */
+    .shell {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      height: 64px;
+      padding: 0 16px;
+      background: var(--surface-container);
+      border-bottom: 1px solid var(--outline-variant);
+    }
+
+    @media (min-width: 600px) {
+      .top-bar {
+        padding: 0 24px;
+      }
+    }
+
+    .wordmark {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--on-surface);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .wordmark::after {
+      content: "™";
+      font-size: 0.45em;
+      letter-spacing: 0;
+      vertical-align: super;
+      margin-left: 0.15em;
+      margin-top: -0.6em;
+    }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+      flex: 0 0 auto;
+    }
+
+    /* ==========================================================================
+       Centered Main Content & Single Card (max-width 560px)
+       ========================================================================== */
+    .main {
+      width: 100%;
+      max-width: 560px;
+      margin: auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--surface-container);
+      border: 1px solid var(--outline-variant);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+      animation: rise 0.45s var(--emph) backwards;
+    }
+
+    @media (min-width: 480px) {
+      .card {
+        padding: 28px;
+      }
+    }
+
+    /* App Identity Row */
+    .app-identity {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .app-icon-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      overflow: hidden;
+      box-shadow: var(--shadow-1);
+    }
+
+    .app-icon-wrap img {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .app-icon-fallback {
+      display: none;
+      width: 38px;
+      height: 38px;
+    }
+
+    .app-icon-wrap.fallback img {
+      display: none;
+    }
+
+    .app-icon-wrap.fallback .app-icon-fallback {
+      display: block;
+    }
+
+    .app-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .headline {
+      font: 500 1.45rem/1.85rem var(--font);
+      letter-spacing: 0;
+      color: var(--on-surface);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 9px;
+      border-radius: 8px;
+      border: 1px solid var(--outline-variant);
+      font: 500 0.75rem/1rem var(--font);
+      letter-spacing: 0.04em;
+      color: var(--on-surface-variant);
+      white-space: nowrap;
+    }
+
+    .chip.on {
+      background: var(--success-container);
+      color: var(--on-success-container);
+      border-color: transparent;
+    }
+
+    .chip.tonal {
+      background: var(--secondary-container);
+      color: var(--on-secondary-container);
+      border-color: transparent;
+    }
+
+    .description {
+      font: 400 0.9375rem/1.55 var(--font);
+      color: var(--on-surface-variant);
+    }
+
+    /* ==========================================================================
+       Material 3 Pill Buttons & Ripple
+       ========================================================================== */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    @media (min-width: 480px) {
+      .actions {
+        flex-direction: row;
+      }
+      .actions .btn {
+        flex: 1 1 0%;
+      }
+    }
+
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 22px;
+      font: 500 0.875rem/1.25rem var(--font);
+      letter-spacing: 0.007em;
+      text-decoration: none;
+      background: transparent;
+      color: var(--primary);
+      transition: box-shadow 0.2s var(--ease), background-color 0.2s var(--ease);
+      touch-action: manipulation;
+      overflow: hidden;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .btn::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: currentColor;
+      opacity: 0;
+      transition: opacity 0.15s;
+      pointer-events: none;
+    }
+
+    @media (hover: hover) {
+      .btn:hover::before {
+        opacity: 0.08;
+      }
+    }
+
+    .btn:active::before,
+    .btn:focus-visible::before {
+      opacity: 0.12;
+    }
+
+    .btn.filled {
+      background: var(--primary);
+      color: var(--on-primary);
+    }
+
+    .btn.filled:hover {
+      box-shadow: var(--shadow-1);
+    }
+
+    .btn.tonal {
+      background: var(--secondary-container);
+      color: var(--on-secondary-container);
+    }
+
+    .btn.outlined {
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      color: var(--on-surface);
+    }
+
+    .btn.small {
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 17px;
+      font-size: 0.8125rem;
+    }
+
+    .btn .icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: currentColor;
+      pointer-events: none;
+      animation: ripple 0.6s var(--emph) forwards;
+    }
+
+    /* ==========================================================================
+       Metadata List
+       ========================================================================== */
+    .list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .list li {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid var(--outline-variant);
+      font-size: 0.875rem;
+    }
+
+    .list .label {
+      color: var(--on-surface-variant);
+      white-space: nowrap;
+    }
+
+    .list .value {
+      color: var(--on-surface);
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .list .value a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .list .value a:hover {
+      text-decoration: underline;
+    }
+
+    /* ==========================================================================
+       Clean Footer & Snackbar
+       ========================================================================== */
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px 20px;
+      padding: 4px 4px 12px;
+      color: var(--outline);
+      font-size: 0.8125rem;
+    }
+
+    .footer a {
+      pointer-events: auto;
+      color: var(--outline);
+      text-decoration: none;
+      transition: color 0.15s var(--ease);
+    }
+
+    .footer a:hover,
+    .footer a:focus-visible {
+      color: var(--on-surface);
+      text-decoration: underline;
+    }
+
+    .snackbar {
+      position: fixed;
+      left: 50%;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      z-index: 60;
+      max-width: min(480px, 100% - 32px);
+      padding: 12px 18px;
+      border-radius: 8px;
+      background: var(--surface-highest);
+      border: 1px solid var(--outline-variant);
+      color: var(--on-surface);
+      box-shadow: var(--shadow-3);
+      font-size: 0.875rem;
+      display: none;
+      animation: up 0.2s var(--ease);
+    }
+
+    .snackbar.show {
+      display: block;
+    }
+
+    @keyframes rise {
+      0% { opacity: 0; transform: translateY(14px); }
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(0); opacity: 0.16; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+
+    @keyframes up {
+      0% { opacity: 0; transform: translate(-50%, 8px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- Minimal Dark Top Bar -->
+    <header class="top-bar">
+      <a href="https://txao.eu/" class="wordmark" aria-label="TXAO Home">TXAO</a>
+
+      <a href="https://t.me/der_46er" target="_blank" rel="noopener noreferrer" class="btn small tonal">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+        <span>Telegram</span>
+      </a>
+    </header>
+
+    <!-- Single Centered Card (max-width 560px) -->
+    <main class="main" id="main">
+      <section class="card" aria-labelledby="app-title">
+        <!-- App Identity -->
+        <div class="app-identity">
+          <div class="app-icon-wrap" id="icon-wrap">
+            <img
+              src="https://raw.githubusercontent.com/der46er/txao/refs/heads/main/assets/icons/camp_guide/Txao_Camp_Guide.png"
+              alt="TXAO Camp Guide icon"
+              width="72"
+              height="72"
+              onerror="this.parentElement.classList.add('fallback')"
+            >
+            <!-- Offline SVG Fallback -->
+            <svg class="app-icon-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+              <circle cx="12" cy="10.2" r="5"/>
+              <polygon points="12 6.8 14 10.2 12 13.6 10 10.2 12 6.8" fill="currentColor" stroke="none"/>
+            </svg>
+          </div>
+
+          <div class="app-title-group">
+            <h1 id="app-title" class="headline">TXAO Camp Guide</h1>
+            <div class="chips">
+              <span class="chip on">T-1.5</span>
+              <span class="chip tonal">Android</span>
+              <span class="chip">Offline</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtitle / Description -->
+        <p class="description">
+          Offline fan guide for Camp Buddy v2.2.1. Pick any character and view every choice with the optimal option and point values.
+        </p>
+
+        <!-- Primary Download Actions -->
+        <div class="actions">
+          <a
+            href="https://txao.eu/download/TXAO_Camp_Guide_T-1.5.apk"
+            class="btn filled"
+            download="TXAO_Camp_Guide_T-1.5.apk"
+            data-toast="Downloading TXAO_Camp_Guide_T-1.5.apk…"
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            <span>Download APK (T-1.5)</span>
+          </a>
+
+          <a
+            href="https://txao.eu/download/TXAO_Camp_Guide_T-1.5-Integrity_Report.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn outlined"
+            data-toast="Opening Integrity Report PDF…"
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+            </svg>
+            <span>Integrity Report (PDF)</span>
+          </a>
+        </div>
+
+        <!-- Metadata List -->
+        <ul class="list" aria-label="Release metadata">
+          <li>
+            <span class="label">Release</span>
+            <span class="value">T-1.5</span>
+          </li>
+          <li>
+            <span class="label">Target</span>
+            <span class="value">Camp Buddy v2.2.1</span>
+          </li>
+          <li>
+            <span class="label">Platform</span>
+            <span class="value">Android APK · Offline</span>
+          </li>
+          <li>
+            <span class="label">Developer</span>
+            <span class="value">
+              <a href="https://t.me/der_46er" target="_blank" rel="noopener noreferrer">@der_46er</a>
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Clean Footer -->
+      <footer class="footer">
+        <a href="https://txao.eu/legal" target="_blank" rel="noopener noreferrer">Legal</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://thataustrianone.eu/socials/" target="_blank" rel="noopener noreferrer">Socials</a>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Snackbar Feedback -->
+  <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const snackbar = document.getElementById('snackbar');
+      let toastTimer = null;
+
+      function showToast(msg) {
+        if (!snackbar || !msg) return;
+        snackbar.textContent = msg;
+        snackbar.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => snackbar.classList.remove('show'), 3000);
+      }
+
+      // Material 3 Ripple effect
+      document.addEventListener('pointerdown', (e) => {
+        const btn = e.target.closest('.btn');
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height) * 2;
+        const ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        ripple.style.width = ripple.style.height = `${size}px`;
+        ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+        ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+        btn.appendChild(ripple);
+        ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+      });
+
+      document.querySelectorAll('[data-toast]').forEach((el) => {
+        el.addEventListener('click', () => showToast(el.getAttribute('data-toast')));
+      });
+    })();
+  </script>
+</body>
+</html>
